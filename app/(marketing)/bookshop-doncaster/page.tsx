@@ -11,7 +11,24 @@ export const metadata: Metadata = {
     description: "Browse books, enjoy coffee and discover reading events at Pages & Peace in Rossington, Doncaster.",
     url: "https://pagesandpeace.co.uk/bookshop-doncaster",
     type: "website",
-    images: [{ url: "https://pagesandpeace.co.uk/home-cafe.jpg", alt: "Pages & Peace bookshop café in Rossington" }],
+    images: [{ url: "https://pagesandpeace.co.uk/home-book.jpg", alt: "Pages & Peace bookshop café in Rossington" }],
+  },
+};
+
+const bookshopSchema = {
+  "@context": "https://schema.org",
+  "@type": "BookStore",
+  name: "Pages & Peace",
+  url: "https://pagesandpeace.co.uk/bookshop-doncaster",
+  image: "https://pagesandpeace.co.uk/home-book.jpg",
+  description: "Independent bookshop and café with community events in Rossington, Doncaster.",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "8 Eva Building, Kings Avenue",
+    addressLocality: "Rossington",
+    addressRegion: "Doncaster",
+    postalCode: "DN11 0PF",
+    addressCountry: "GB",
   },
 };
 
@@ -19,7 +36,7 @@ const directions = "https://www.google.com/maps/search/?api=1&query=8+Eva+Buildi
 
 export default function BookshopDoncasterPage() {
   return (
-    <main className="overflow-hidden bg-[#f8f5f1] text-[#17221f]">
+    <main className="overflow-hidden bg-[#f8f5f1] text-[#17221f]">\n      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(bookshopSchema) }} />
       <section className="mx-auto grid max-w-[1440px] lg:grid-cols-[1fr_1fr]">
         <div className="flex flex-col justify-center px-6 py-16 sm:px-10 lg:px-16 lg:py-24">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#477460]">Pages &amp; Peace · Rossington, Doncaster</p>
@@ -32,7 +49,7 @@ export default function BookshopDoncasterPage() {
           </div>
         </div>
         <div className="relative min-h-[360px] lg:min-h-[620px]">
-          <Image src="/home-cafe.jpg" alt="Pages & Peace independent bookshop and café in Rossington, Doncaster" fill priority sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
+          <Image src="/home-book.jpg" alt="Pages & Peace independent bookshop and café in Rossington, Doncaster" fill priority sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
         </div>
       </section>
 
