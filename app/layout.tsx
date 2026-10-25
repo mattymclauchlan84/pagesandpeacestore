@@ -28,11 +28,7 @@ const localBusinessJsonLd = {
     postalCode: "DN11 0PF",
     addressCountry: "GB",
   },
-  openingHoursSpecification: [
-    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday"], opens: "09:00", closes: "20:00" },
-    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Thursday", "Friday", "Saturday"], opens: "09:00", closes: "17:00" },
-    { "@type": "OpeningHoursSpecification", dayOfWeek: "Sunday", opens: "10:00", closes: "16:00" },
-  ],
+  // Opening hours are managed in the CMS; do not publish a conflicting static schedule.
   sameAs: [
     "https://www.instagram.com/pagesandpeace_cafe/",
     "https://www.facebook.com/profile.php?id=61581624222575",
@@ -42,7 +38,7 @@ const localBusinessJsonLd = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Pages & Peace",
+    default: "Pages & Peace | Café & Independent Bookshop in Rossington, Doncaster",
     template: "%s | Pages & Peace",
   },
   description: "Independent bookshop, café and community events in Rossington, Doncaster.",

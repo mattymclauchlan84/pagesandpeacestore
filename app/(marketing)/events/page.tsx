@@ -1,3 +1,11 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Events and workshops in Rossington, Doncaster",
+  description: "Discover upcoming bookish events, creative workshops and community gatherings at Pages & Peace in Rossington, Doncaster.",
+  alternates: { canonical: "https://pagesandpeace.co.uk/events" },
+};
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
