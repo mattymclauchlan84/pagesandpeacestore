@@ -88,3 +88,10 @@ Implemented on `feat/seo-local-growth-audit` for preview review, not released to
 ## 2026-10-25 — Local content expansion (preview)
 ### Decision
 Expand the existing `/visit` and `/events` pages with useful, non-duplicative Rossington and Doncaster discovery content rather than creating thin keyword-targeted pages. Use existing CMS-driven opening hours and live event listings as sources of truth; link readers to the menu, directions and bookings. No payment, database or customer-data changes.
+
+## 2026-10-25 — Search Console-led local visit conversion (preview)
+### Evidence and decision
+The supplied Google Search Console export covers only 18–23 October 2026 despite a three-month filter. It reports 254 web impressions and 39 clicks in total, including non-branded Rossington café and Doncaster bookshop queries with impressions but no clicks. These small samples are directional, not proof of demand or ranking uplift. Prioritise improving the existing Visit and Menu pages to turn local search discovery into in-person visits, without thin location pages or speculative business details.
+
+### Scope and acceptance
+Update Visit page metadata and above-the-fold copy for local café intent, and add clear visit/directions calls to action on the existing CMS-backed Menu page. Keep opening hours CMS-driven, preserve menu loading and checkout/event flows, and make no database, auth, payment or production configuration changes. Verify responsive layout and links in preview before release; compare Search Console non-branded query clicks and GBP direction requests after 6–8 weeks, acknowledging the baseline is only six days.
