@@ -95,3 +95,10 @@ The supplied Google Search Console export covers only 18–23 October 2026 despi
 
 ### Scope and acceptance
 Update Visit page metadata and above-the-fold copy for local café intent, and add clear visit/directions calls to action on the existing CMS-backed Menu page. Keep opening hours CMS-driven, preserve menu loading and checkout/event flows, and make no database, auth, payment or production configuration changes. Verify responsive layout and links in preview before release; compare Search Console non-branded query clicks and GBP direction requests after 6–8 weeks, acknowledging the baseline is only six days.
+
+## 2026-10-25 — Homepage, About and Contact local search growth (preview)
+### Decision
+Expand the owner-approved SEO campaign beyond the Visit/Menu conversion slice. The homepage now explicitly identifies the Rossington café/bookshop in visible content, retains the brand slogan, and foregrounds visiting. About becomes a substantial, factual introduction to the sibling-founded café/bookshop and community programme. Contact gains useful directions and CMS-sourced opening hours without altering the existing message API or business details.
+
+### Safety and evaluation
+No new thin location pages, no changes to contact submission, payments, bookings, auth or database. Test responsive layouts, metadata, navigation, menu and contact form UI without sending a message on a production-backed preview. Measure local non-branded search clicks and GBP direction requests against the short six-day Search Console baseline in roughly one month; no ranking or footfall uplift is promised.
