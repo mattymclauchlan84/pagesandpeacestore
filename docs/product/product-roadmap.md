@@ -51,3 +51,6 @@ The product owner approved building a public book-review community surface on 20
 
 ## Approved local discoverability slice — 2026-10-25
 Improve local discovery of the Rossington café, menu and community events with accurate page metadata, sitemap inclusion and consistent business details. Avoid speculative opening hours and thin SEO landing pages. Verify the preview, search markup and Google Search Console baseline before production release. No payment, booking or database changes are in scope.
+
+## Approved growth campaign — 2026-10-25
+The owner approved a broader Search Console-led local SEO campaign, including substantial homepage, About and Contact improvements and useful new pages where justified. Primary outcome: more in-person visits to the Rossington café/bookshop, supported by local discovery and event bookings. Prioritise existing pages and real business content over thin keyword variants. Review non-branded local search impressions/clicks and Google Business Profile direction requests after approximately one month. Preserve CMS opening hours and commerce functionality.
