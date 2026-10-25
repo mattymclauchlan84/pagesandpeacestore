@@ -42,7 +42,7 @@ const localBusinessJsonLd = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Pages & Peace",
+    default: "Pages & Peace | Café & Independent Bookshop in Rossington, Doncaster",
     template: "%s | Pages & Peace",
   },
   description: "Independent bookshop, café and community events in Rossington, Doncaster.",
