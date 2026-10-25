@@ -28,11 +28,7 @@ const localBusinessJsonLd = {
     postalCode: "DN11 0PF",
     addressCountry: "GB",
   },
-  openingHoursSpecification: [
-    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday"], opens: "09:00", closes: "20:00" },
-    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Thursday", "Friday", "Saturday"], opens: "09:00", closes: "17:00" },
-    { "@type": "OpeningHoursSpecification", dayOfWeek: "Sunday", opens: "10:00", closes: "16:00" },
-  ],
+  // Opening hours are managed in the CMS; do not publish a conflicting static schedule.
   sameAs: [
     "https://www.instagram.com/pagesandpeace_cafe/",
     "https://www.facebook.com/profile.php?id=61581624222575",
