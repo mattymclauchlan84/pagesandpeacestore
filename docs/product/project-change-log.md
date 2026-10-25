@@ -77,3 +77,10 @@ Event-series pages must not rely on white text remaining readable over arbitrary
 
 ### Responsive behaviour
 The hero retains photography as the visual focus, but navigation/title contrast is guaranteed across mobile and desktop. Descriptive copy is separated from the image so it remains readable regardless of image brightness or crop.
+
+## 2026-10-25 — Local SEO discovery improvements (preview)
+### Decision
+Improve discoverability of the existing Rossington café and events pages without creating thin location pages or changing commerce behaviour. Add `/visit` to the sitemap and page-specific canonical metadata for events and menu. Remove static structured-data opening hours that can conflict with CMS-managed hours; restore hours in structured data only through a verified single source of truth.
+
+### Delivery and security
+Implemented on `feat/seo-local-growth-audit` for preview review, not released to production. Preview now references the sole production Supabase database, so testing must avoid payments, bookings, refunds, customer communications and admin mutations. The former staging project is retired. A legacy service-role credential was exposed and requires verified revocation after replacement-key migration; environment variable updates alone do not revoke it.
