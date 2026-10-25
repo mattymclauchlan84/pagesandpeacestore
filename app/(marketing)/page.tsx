@@ -32,6 +32,7 @@ export default async function Home() {
           <p className="mt-5 text-base font-semibold text-[#477460]">Independent café &amp; bookshop in Rossington, Doncaster</p>
           <p className="mt-7 max-w-md text-lg leading-8 text-[#40514a]">Looking for a café in Rossington? Visit Pages &amp; Peace for coffee, cakes, light bites and an independent bookshop — plus book clubs, workshops and community events.</p>
           <div className="mt-9 flex flex-wrap gap-3">
+            <Link href="/bookshop-doncaster" className="rounded-full border border-[#17221f] px-6 py-3 text-sm font-semibold transition hover:bg-white">Explore our bookshop</Link>
             <Link href="/visit" className="rounded-full bg-[#17221f] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#477460]">Visit our café</Link>
             <Link href="/menu" className="rounded-full border border-[#17221f] px-6 py-3 text-sm font-semibold transition hover:bg-white">View the menu</Link>
             <Link href="/events" className="rounded-full border border-[#17221f] px-6 py-3 text-sm font-semibold transition hover:bg-white">Explore events</Link>
