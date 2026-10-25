@@ -51,3 +51,6 @@ The product owner approved building a public book-review community surface on 20
 
 ## Approved local discoverability slice — 2026-10-25
 Improve local discovery of the Rossington café, menu and community events with accurate page metadata, sitemap inclusion and consistent business details. Avoid speculative opening hours and thin SEO landing pages. Verify the preview, search markup and Google Search Console baseline before production release. No payment, booking or database changes are in scope.
+
+## Approved bookshop destination landing page — 2026-10-25
+Create a substantial /bookshop-doncaster page to address existing Search Console discovery for Doncaster bookshop queries. Lead with a genuine visit proposition and accurate Rossington location, café and community events; link from homepage and sitemap. Owner supplied original photography for a future image-enrichment pass. Avoid publishing customer imagery without confirmation of appropriate permissions. No database, payment or production changes.
