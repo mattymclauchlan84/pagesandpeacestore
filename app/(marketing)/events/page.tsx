@@ -39,7 +39,7 @@ export default async function EventsPage() {
           Events at Pages &amp; Peace
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-neutral-600">
-          Author nights, tastings, creative workshops and more.
+          Discover book clubs, creative workshops and community evenings in Rossington, Doncaster. Browse what’s coming up and book directly with Pages &amp; Peace.
         </p>
       </section>
 
@@ -98,6 +98,17 @@ export default async function EventsPage() {
             ))}
           </div>
         )}
+      </section>
+      <section className="mx-auto max-w-7xl px-6 pb-16">
+        <div className="rounded-2xl bg-[#f8f5f1] p-7 sm:p-10">
+          <h2 className="text-3xl font-bold text-neutral-950">Book clubs and community events near Doncaster</h2>
+          <p className="mt-4 max-w-3xl leading-7 text-neutral-700">Looking for a book club, a creative evening or something different to do locally? Pages &amp; Peace is an independent café and bookshop in Rossington, Doncaster, where books and community come together. Our programme changes throughout the year, so the event listings above are the best place to find confirmed dates and available places.</p>
+          <div className="mt-7 grid gap-5 md:grid-cols-2">
+            <div><h3 className="text-lg font-semibold text-neutral-950">Find your reading community</h3><p className="mt-2 leading-7 text-neutral-700">Our bookish gatherings offer a reason to make time for reading and meet others who enjoy it. Explore the current programme to see which clubs have upcoming dates.</p></div>
+            <div><h3 className="text-lg font-semibold text-neutral-950">Try a workshop or social evening</h3><p className="mt-2 leading-7 text-neutral-700">From creative sessions to community get-togethers, the events calendar is a simple way to discover something new in Rossington.</p></div>
+          </div>
+          <p className="mt-6 text-neutral-700">Visiting for the first time? <Link href="/visit" className="font-semibold underline underline-offset-4">Find our address and opening hours</Link>, or <Link href="/menu" className="font-semibold underline underline-offset-4">browse the café menu</Link> before you come.</p>
+        </div>
       </section>
       <section className="mx-auto max-w-7xl px-6 pb-16">
         <MarketingSignup />
