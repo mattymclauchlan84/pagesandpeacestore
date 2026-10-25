@@ -84,3 +84,7 @@ Improve discoverability of the existing Rossington café and events pages withou
 
 ### Delivery and security
 Implemented on `feat/seo-local-growth-audit` for preview review, not released to production. Preview now references the sole production Supabase database, so testing must avoid payments, bookings, refunds, customer communications and admin mutations. The former staging project is retired. A legacy service-role credential was exposed and requires verified revocation after replacement-key migration; environment variable updates alone do not revoke it.
+
+## 2026-10-25 — Local content expansion (preview)
+### Decision
+Expand the existing `/visit` and `/events` pages with useful, non-duplicative Rossington and Doncaster discovery content rather than creating thin keyword-targeted pages. Use existing CMS-driven opening hours and live event listings as sources of truth; link readers to the menu, directions and bookings. No payment, database or customer-data changes.
