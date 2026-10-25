@@ -71,6 +71,19 @@ export default function BookshopDoncasterPage() {
         </div>
       </section>
 
+
+      <section className="mx-auto max-w-6xl px-6 py-16 sm:py-24" aria-labelledby="gallery-heading">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#477460]">A look inside</p>
+        <h2 id="gallery-heading" className="mt-4 max-w-3xl font-serif text-4xl sm:text-5xl">Explore our Rossington bookshop and café.</h2>
+        <p className="mt-5 max-w-2xl leading-8 text-[#40514a]">Take a look around Pages &amp; Peace before your visit. Browse our books, enjoy a coffee and discover a welcoming independent space just outside Doncaster.</p>
+        <div className="mt-10 grid grid-cols-2 gap-4 md:gap-6">
+          <figure className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[#e7eee8]"><Image src="https://res.cloudinary.com/dadinnds6/image/upload/v1792940808/4808c068-4186-4ad0-b83e-f8630b6b9e48_pw4snt.jpg" alt="Inside Pages & Peace bookshop in Rossington" fill sizes="(min-width: 1024px) 540px, 50vw" className="object-cover" /></figure>
+          <figure className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[#e7eee8]"><Image src="https://res.cloudinary.com/dadinnds6/image/upload/v1792940808/47a034fd-f3cd-4d18-9f89-08fcff8b6d2e_cxjnal.jpg" alt="The welcoming Pages & Peace bookshop and café" fill sizes="(min-width: 1024px) 540px, 50vw" className="object-cover" /></figure>
+          <figure className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[#e7eee8]"><Image src="https://res.cloudinary.com/dadinnds6/image/upload/v1792940808/7d234d50-eb9b-4eeb-96f4-66e2ce776731_dypoic.jpg" alt="A closer look at Pages & Peace in Doncaster" fill sizes="(min-width: 1024px) 540px, 50vw" className="object-cover" /></figure>
+          <figure className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[#e7eee8]"><Image src="https://res.cloudinary.com/dadinnds6/image/upload/v1792940808/7a810575-b411-45c4-b2ec-17fdb51e90b8_ll5gom.jpg" alt="Discover Pages & Peace independent bookshop" fill sizes="(min-width: 1024px) 540px, 50vw" className="object-cover" /></figure>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-6xl px-6 py-16 sm:py-24">
         <div className="rounded-[2rem] bg-white p-8 sm:p-12">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#477460]">Visit Pages &amp; Peace</p>
