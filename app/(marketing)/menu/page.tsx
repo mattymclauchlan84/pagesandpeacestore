@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { supabaseService } from "@/lib/supabase/service";
@@ -6,6 +7,12 @@ import Tabs from "./Tabs";
 type MenuSectionRow = { id: string; name: string; slug: string; position: number };
 type MenuCategory = { id: string; name: string; description: string | null; position: number; section_id: string | null };
 type MenuItem = { id: string; category_id: string; name: string; price: number; position: number; note: string | null };
+
+export const metadata: Metadata = {
+  title: "Café menu in Rossington, Doncaster",
+  description: "Explore the food and drink menu at Pages & Peace, an independent bookshop café in Rossington, Doncaster.",
+  alternates: { canonical: "https://pagesandpeace.co.uk/menu" },
+};
 
 export const dynamic = "force-dynamic";
 
