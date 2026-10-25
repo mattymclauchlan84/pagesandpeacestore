@@ -88,3 +88,6 @@ Implemented on `feat/seo-local-growth-audit` for preview review, not released to
 ## 2026-10-25 — Local content expansion (preview)
 ### Decision
 Expand the existing `/visit` and `/events` pages with useful, non-duplicative Rossington and Doncaster discovery content rather than creating thin keyword-targeted pages. Use existing CMS-driven opening hours and live event listings as sources of truth; link readers to the menu, directions and bookings. No payment, database or customer-data changes.
+
+## 2026-10-25 - Doncaster bookshop landing page
+Added /bookshop-doncaster with local search metadata, useful bookshop and cafe information, directions and links to existing pages. Added homepage discovery link and sitemap entry. The owner's new photos are not yet integrated because the image upload connection returned an error. Preview verification and independent review remain required before release. No production data or commerce changes.
