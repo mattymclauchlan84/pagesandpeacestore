@@ -10,7 +10,7 @@ type MenuItem = { id: string; category_id: string; name: string; price: number; 
 
 export const metadata: Metadata = {
   title: "Café menu in Rossington, Doncaster",
-  description: "Explore the food and drink menu at Pages & Peace, an independent bookshop café in Rossington, Doncaster.",
+  description: "See the Pages & Peace café menu in Rossington, Doncaster. Browse coffee, drinks, food and sweet treats, then plan your visit to our independent bookshop café.",
   alternates: { canonical: "https://pagesandpeace.co.uk/menu" },
 };
 
@@ -44,10 +44,19 @@ export default async function MenuPage() {
       <section className="mb-10 flex flex-col items-center text-center">
         <Image src="/p&p_logo_cream.svg" alt="Pages & Peace logo" width={140} height={140} className="mb-4" />
         <h1 className="text-4xl font-semibold tracking-widest text-[#5DA865] sm:text-5xl">Our Menu</h1>
-        <p className="mt-2 text-[#111]/70">Every community needs a chapter.</p>
+        <p className="mt-2 text-[#111]/70">Coffee, food and sweet treats at our independent bookshop café in Rossington, Doncaster.</p>
       </section>
 
       <Tabs sections={sectionTree} />
+
+      <section className="mx-auto mt-12 max-w-3xl rounded-2xl bg-white p-7 text-center shadow-sm sm:p-10" aria-labelledby="visit-menu-heading">
+        <h2 id="visit-menu-heading" className="text-2xl font-semibold text-[#17221f]">Fancy a coffee and a browse?</h2>
+        <p className="mx-auto mt-3 max-w-xl leading-7 text-[#40514a]">Pages &amp; Peace is more than a café menu. Visit our independent bookshop and café in Rossington, Doncaster for a drink, something to eat and time among the books.</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link href="/visit" className="rounded-full bg-[#17221f] px-6 py-3 text-sm font-semibold text-white hover:bg-[#477460]">Plan your visit</Link>
+          <a href="https://www.google.com/maps/search/?api=1&query=8+Eva+Building+Kings+Avenue+Rossington+Doncaster+DN11+0PF" target="_blank" rel="noreferrer" className="rounded-full border border-[#17221f] px-6 py-3 text-sm font-semibold text-[#17221f] hover:bg-[#f8f5f1]">Get directions</a>
+        </div>
+      </section>
 
       <div className="mt-16 text-center">
         <Link href="/" className="inline-block font-medium text-[#5DA865] hover:underline">← Back to Home</Link>
