@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import OpeningHours from "@/components/OpeningHours";
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
@@ -55,7 +54,7 @@ export default function ContactPage() {
           </ul>
         </div>
 
-        <div className="mb-10 grid gap-5 sm:grid-cols-2"><section className="rounded-xl bg-[#dfebe6] p-6"><h2 className="text-xl font-semibold">Find our café &amp; bookshop</h2><p className="mt-3 leading-7">Planning a visit? See our menu and find your way to Kings Avenue, Rossington.</p><div className="mt-5 flex flex-wrap gap-4"><Link href="/visit" className="font-semibold underline underline-offset-4">Plan your visit</Link><a href="https://www.google.com/maps/search/?api=1&query=8+Eva+Building+Kings+Avenue+Rossington+Doncaster+DN11+0PF" target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-4">Get directions</a></div></section><section className="rounded-xl bg-[#f1e2d6] p-6"><h2 className="text-xl font-semibold">Opening hours</h2><div className="mt-4"><OpeningHours /></div></section></div>
+        <div className="mb-10 grid gap-5 sm:grid-cols-2"><section className="rounded-xl bg-[#dfebe6] p-6"><h2 className="text-xl font-semibold">Find our café &amp; bookshop</h2><p className="mt-3 leading-7">Planning a visit? See our menu and find your way to Kings Avenue, Rossington.</p><div className="mt-5 flex flex-wrap gap-4"><Link href="/visit" className="font-semibold underline underline-offset-4">Plan your visit</Link><a href="https://www.google.com/maps/search/?api=1&query=8+Eva+Building+Kings+Avenue+Rossington+Doncaster+DN11+0PF" target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-4">Get directions</a></div></section><section className="rounded-xl bg-[#f1e2d6] p-6"><h2 className="text-xl font-semibold">Opening hours</h2><p className="mt-3 leading-7">See the latest café opening hours on our Visit page before setting off.</p><Link href="/visit" className="mt-5 inline-block font-semibold underline underline-offset-4">View opening hours</Link></section></div>
 
         <div className="bg-white rounded-xl border border-[#e5e2dc] p-6 shadow-sm">
           <h2 className="text-xl font-semibold mb-4 tracking-wide">
