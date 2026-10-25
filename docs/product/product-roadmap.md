@@ -48,3 +48,6 @@ Every significant slice should state which confirmed roadmap objective it serves
 
 ## Confirmed product direction — Community reading
 The product owner approved building a public book-review community surface on 2026-09-20. Phase 1 establishes public book/review discovery and authenticated customer contribution. The growth path is intentionally extensible toward book pages, reading lists, reactions, reviewer profiles, staff/event/shop connections and recommendations, with later phases driven by observed usage and separate approval.
+
+## Approved local discoverability slice — 2026-10-25
+Improve local discovery of the Rossington café, menu and community events with accurate page metadata, sitemap inclusion and consistent business details. Avoid speculative opening hours and thin SEO landing pages. Verify the preview, search markup and Google Search Console baseline before production release. No payment, booking or database changes are in scope.
