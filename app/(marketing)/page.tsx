@@ -6,8 +6,8 @@ import { listPublishedEvents } from "@/lib/app-core/events";
 import { getUser } from "@/lib/supabase/get-user";
 
 export const metadata: Metadata = {
-  title: "Independent bookshop, café & events in Rossington",
-  description: "Visit Pages & Peace in Rossington, Doncaster for thoughtfully chosen books, good coffee and community events.",
+  title: "Café & Independent Bookshop in Rossington, Doncaster",
+  description: "Looking for a café or bookshop in Rossington? Visit Pages & Peace for coffee, cakes, books and community events in Doncaster. See our menu and plan your visit.",
   alternates: { canonical: "https://pagesandpeace.co.uk" },
 };
 
@@ -29,11 +29,12 @@ export default async function Home() {
         <div className="relative z-10 max-w-xl py-14">
           <p className="mb-5 font-serif text-lg italic text-[#477460]">Coffee, books &amp; calm</p>
           <h1 className="text-balance font-serif text-5xl leading-[.96] tracking-[-0.04em] sm:text-6xl lg:text-7xl">Every community needs a chapter.</h1>
-          <p className="mt-7 max-w-md text-lg leading-8 text-[#40514a]">A welcoming Rossington corner for good coffee, great reads and the kind of events that bring people together.</p>
+          <p className="mt-5 text-base font-semibold text-[#477460]">Independent café &amp; bookshop in Rossington, Doncaster</p>
+          <p className="mt-7 max-w-md text-lg leading-8 text-[#40514a]">Looking for a café in Rossington? Visit Pages &amp; Peace for coffee, cakes, light bites and an independent bookshop — plus book clubs, workshops and community events.</p>
           <div className="mt-9 flex flex-wrap gap-3">
-            <Link href="/events" className="rounded-full bg-[#17221f] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#477460]">Explore events</Link>
+            <Link href="/visit" className="rounded-full bg-[#17221f] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#477460]">Visit our café</Link>
             <Link href="/menu" className="rounded-full border border-[#17221f] px-6 py-3 text-sm font-semibold transition hover:bg-white">View the menu</Link>
-            <Link href="/visit" className="rounded-full border border-[#17221f] px-6 py-3 text-sm font-semibold transition hover:bg-white">Plan your visit</Link>
+            <Link href="/events" className="rounded-full border border-[#17221f] px-6 py-3 text-sm font-semibold transition hover:bg-white">Explore events</Link>
           </div>
         </div>
         <div className="relative z-10 flex items-center gap-3 text-sm text-[#40514a]"><span className="h-px w-10 bg-[#477460]" />A little place for big conversations.</div>
@@ -52,9 +53,11 @@ export default async function Home() {
       </div>
       <div className="mt-12 grid gap-6 md:grid-cols-2">
         <article className="group overflow-hidden rounded-[2rem] bg-[#dfebe6]"><div className="relative aspect-[4/5] overflow-hidden"><Image src="/home-drink.jpg" alt="A chocolate drink made at Pages & Peace" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover transition duration-700 group-hover:scale-105" /></div><div className="p-7"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#477460]">The café</p><h3 className="mt-3 font-serif text-3xl">Something lovely in every cup.</h3><Link href="/menu" className="mt-5 inline-block text-sm font-semibold underline underline-offset-4">See the menu</Link></div></article>
-        <article className="group overflow-hidden rounded-[2rem] bg-[#f1e2d6]"><div className="relative aspect-[4/5] overflow-hidden"><Image src="/home-book.jpg" alt="A book selected at Pages & Peace" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover transition duration-700 group-hover:scale-105" /></div><div className="p-7"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9a5a3b]">The shelves</p><h3 className="mt-3 font-serif text-3xl">Stories waiting to be discovered.</h3><Link href="/about" className="mt-5 inline-block text-sm font-semibold underline underline-offset-4">Our story</Link></div></article>
+        <article className="group overflow-hidden rounded-[2rem] bg-[#f1e2d6]"><div className="relative aspect-[4/5] overflow-hidden"><Image src="/home-book.jpg" alt="A book selected at Pages & Peace" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover transition duration-700 group-hover:scale-105" /></div><div className="p-7"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9a5a3b]">The shelves</p><h3 className="mt-3 font-serif text-3xl">Stories waiting to be discovered.</h3><p className="mt-3 text-sm leading-6 text-[#52635c]">Browse an independent bookshop in Rossington, Doncaster — a place for readers, recommendations and your next favourite story.</p><Link href="/about" className="mt-5 inline-block text-sm font-semibold underline underline-offset-4">Our story</Link></div></article>
       </div>
     </section>
+
+    <section className="mx-auto max-w-7xl px-6 pb-16 sm:px-10 lg:px-16" aria-labelledby="find-us-heading"><div className="rounded-[2rem] bg-[#dfebe6] p-8 sm:p-12"><h2 id="find-us-heading" className="font-serif text-3xl sm:text-4xl">Your next coffee stop in Rossington</h2><p className="mt-4 max-w-2xl leading-7 text-[#40514a]">Whether you live nearby or are exploring Doncaster, our café and independent bookshop is a welcoming place to meet a friend, browse the shelves or enjoy a coffee and cake. Find us on Kings Avenue in Rossington.</p><div className="mt-6 flex flex-wrap gap-4"><Link href="/visit" className="font-semibold underline underline-offset-4">Address, opening hours &amp; directions</Link><Link href="/menu" className="font-semibold underline underline-offset-4">Browse our café menu</Link></div></div></section>
 
     <section className="border-y border-[#d8ddd6] bg-white/60">
       <div className="mx-auto max-w-7xl px-6 py-20 sm:px-10 lg:px-16">
