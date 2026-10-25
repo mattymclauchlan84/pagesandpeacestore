@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     description: "Browse books, enjoy coffee and discover reading events at Pages & Peace in Rossington, Doncaster.",
     url: "https://pagesandpeace.co.uk/bookshop-doncaster",
     type: "website",
-    images: [{ url: "https://pagesandpeace.co.uk/home-book.jpg", alt: "Pages & Peace bookshop café in Rossington" }],
+    images: [{ url: "https://res.cloudinary.com/dadinnds6/image/upload/v1792940808/shelves_xy3msz.jpg", alt: "Pages & Peace bookshop café in Rossington" }],
   },
 };
 
@@ -20,7 +20,7 @@ const bookshopSchema = {
   "@type": "BookStore",
   name: "Pages & Peace",
   url: "https://pagesandpeace.co.uk/bookshop-doncaster",
-  image: "https://pagesandpeace.co.uk/home-book.jpg",
+  image: "https://res.cloudinary.com/dadinnds6/image/upload/v1792940808/shelves_xy3msz.jpg",
   description: "Independent bookshop and café with community events in Rossington, Doncaster.",
   address: {
     "@type": "PostalAddress",
@@ -36,7 +36,8 @@ const directions = "https://www.google.com/maps/search/?api=1&query=8+Eva+Buildi
 
 export default function BookshopDoncasterPage() {
   return (
-    <main className="overflow-hidden bg-[#f8f5f1] text-[#17221f]">\n      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(bookshopSchema) }} />
+    <main className="overflow-hidden bg-[#f8f5f1] text-[#17221f]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(bookshopSchema) }} />
       <section className="mx-auto grid max-w-[1440px] lg:grid-cols-[1fr_1fr]">
         <div className="flex flex-col justify-center px-6 py-16 sm:px-10 lg:px-16 lg:py-24">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#477460]">Pages &amp; Peace · Rossington, Doncaster</p>
@@ -49,7 +50,7 @@ export default function BookshopDoncasterPage() {
           </div>
         </div>
         <div className="relative min-h-[360px] lg:min-h-[620px]">
-          <Image src="/home-book.jpg" alt="Pages & Peace independent bookshop and café in Rossington, Doncaster" fill priority sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
+          <Image src="https://res.cloudinary.com/dadinnds6/image/upload/v1792940808/shelves_xy3msz.jpg" alt="Pages & Peace independent bookshop and café in Rossington, Doncaster" fill priority sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
         </div>
       </section>
 
@@ -65,7 +66,7 @@ export default function BookshopDoncasterPage() {
 
       <section className="bg-[#e7eee8] px-6 py-16 sm:py-24">
         <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_1fr] lg:items-center">
-          <div className="relative min-h-[300px] overflow-hidden rounded-[2rem] sm:min-h-[420px]"><Image src="/home-cafe.jpg" alt="The welcoming café space at Pages & Peace" fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" /></div>
+          <div className="relative min-h-[300px] overflow-hidden rounded-[2rem] sm:min-h-[420px]"><Image src="https://res.cloudinary.com/dadinnds6/image/upload/v1792940809/6782c007-5932-4eca-9bf5-ce1d92ebff89_ilxcrb.jpg" alt="The welcoming café space at Pages & Peace" fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" /></div>
           <div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#477460]">More than a bookshop</p><h2 className="mt-4 font-serif text-4xl">A little breathing room between chapters.</h2><p className="mt-6 leading-8 text-[#40514a]">Looking for a bookshop near Doncaster where you can actually linger? Pages &amp; Peace brings together books, coffee and a relaxed community atmosphere in Rossington. Come alone, bring a friend or join us for an event.</p><Link href="/about" className="mt-6 inline-block font-semibold underline underline-offset-4">Read our story</Link></div>
         </div>
       </section>
