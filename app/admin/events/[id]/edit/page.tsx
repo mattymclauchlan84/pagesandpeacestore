@@ -3,8 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { DeleteEventButton } from "@/components/app-core/delete-event-button";
 import { EventAdminForm } from "@/components/app-core/event-admin-form";
 import { EventTicketOptionsEditor } from "@/components/app-core/event-ticket-options-editor";
-import { readCapacity, readEventField as read, readTicketOptions, ticketSaveError } from "@/lib/app-core/admin-event-tickets";
+import { isEventUuid, readCapacity, readEventField as read, readTicketOptions, ticketSaveError } from "@/lib/app-core/admin-event-tickets";
 import { EventImageUpload } from "@/components/app-core/event-image-upload";
+import { isMissingEventBookingRuleColumn, readEventBookingRule, type EventBookingRule } from "@/lib/app-core/event-booking-rule";
 import { appCoreDb } from "@/lib/app-core/service";
 import { requireAdminUser } from "@/lib/auth/require-admin-user";
 import { parseLondonDateTimeInput, toLondonDateTimeInput } from "@/lib/time/london";
@@ -18,12 +19,16 @@ export default async function EditEventPage({ params }: Props) {
   if (!admin) redirect(`/sign-in?callbackURL=/admin/events/${id}/edit`);
 
   const db = appCoreDb();
-  const [{ data: event, error }, { data: tickets, error: ticketError }] = await Promise.all([
+  const [{ data: event, error }, { data: tickets, error: ticketError }, ruleResult] = await Promise.all([
     db.from("events").select("id,title,series_name,subtitle,short_description,description,starts_at,ends_at,capacity,image_url,status").eq("id", id).maybeSingle(),
     db.from("ticket_types").select("id,name,description,price_pence,capacity,is_active").eq("event_id", id).order("created_at").order("id"),
+    db.from("events").select("booking_rule").eq("id", id).maybeSingle(),
   ]);
   if (error || ticketError) throw new Error("Unable to load this event.");
   if (!event) notFound();
+  if (ruleResult.error && !isMissingEventBookingRuleColumn(ruleResult.error)) throw new Error("Unable to load the event’s booking rule.");
+  const supportsBookingRule = !ruleResult.error;
+  const bookingRule = readEventBookingRule(ruleResult.data?.booking_rule);
   const { data: seriesRows, error: seriesError } = await db.from("events").select("series_name").not("series_name", "is", null).order("series_name");
   if (seriesError) throw new Error("Unable to load event series.");
   const seriesOptions = [...new Set((seriesRows ?? []).map((row) => row.series_name).filter((name): name is string => Boolean(name)))];
@@ -45,9 +50,29 @@ export default async function EditEventPage({ params }: Props) {
     const options = readTicketOptions(formData);
     if (!options) return "Enter a valid name and price for each ticket option.";
 
+    let updatedBookingRule: EventBookingRule | null | undefined;
+    if (formData.has("edit_booking_rule")) {
+      if (!supportsBookingRule) return "The child and adult booking setting is unavailable. Refresh and try again.";
+
+      if (formData.has("require_child_and_adult")) {
+        const child = read(formData, "child_ticket_id");
+        const adult = read(formData, "adult_ticket_id");
+        const activeIds = new Set(options.filter((option) => option.is_active).map((option) => option.id));
+        if (!isEventUuid(child) || !isEventUuid(adult) || child === adult || !activeIds.has(child) || !activeIds.has(adult)) {
+          return "Choose two different ticket options that are available for sale.";
+        }
+        if (child !== bookingRule?.child_ticket_id || adult !== bookingRule?.adult_ticket_id) {
+          updatedBookingRule = { child_ticket_id: child, adult_ticket_id: adult };
+        }
+      } else if (bookingRule) {
+        updatedBookingRule = null;
+      }
+    }
+
     const { error: updateError } = await appCoreDb().rpc("save_event_ticket_options", {
       p_event_id: id,
       p_event: {
+        ...(updatedBookingRule !== undefined ? { booking_rule: updatedBookingRule } : {}),
         title, description, capacity, status, starts_at: date.toISOString(), ends_at: endDate?.toISOString() ?? null,
         series_name: read(formData, "series_name") || null,
         subtitle: read(formData, "subtitle") || null,
@@ -88,7 +113,7 @@ export default async function EditEventPage({ params }: Props) {
       </div>
       <div><p className="text-sm font-medium">Event image</p><div className="mt-1"><EventImageUpload initialUrl={event.image_url} /></div></div>
       <label className="block text-sm font-medium">Visibility<select name="status" defaultValue={event.status} className="mt-1 w-full rounded-lg border px-3 py-2 font-normal"><option value="draft">Draft — private</option><option value="published">Published — public</option><option value="cancelled">Cancelled — not for sale</option><option value="archived">Archived — removed from sale</option></select></label>
-      <EventTicketOptionsEditor initialOptions={tickets ?? []} />
+      <EventTicketOptionsEditor initialOptions={tickets ?? []} bookingRule={supportsBookingRule ? bookingRule : undefined} />
     </EventAdminForm>
     <form action={remove} className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6">
       <h2 className="font-semibold text-red-900">Archive event</h2>

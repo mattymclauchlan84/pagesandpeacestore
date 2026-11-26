@@ -55,8 +55,11 @@ export async function POST(request: Request) {
   const typedReservation = reservation as Reservation | null;
   if (reservationError || !typedReservation) {
     console.error("app_core checkout reservation failed", { code: reservationError?.code, message: reservationError?.message });
-    const message = reservationError?.message === "NOT_ENOUGH_SEATS" ? "NOT_ENOUGH_SEATS" : reservationError?.message === "AUTH_REQUIRED" ? "AUTH_REQUIRED" : "CHECKOUT_UNAVAILABLE";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const expectedErrors = ["NOT_ENOUGH_SEATS", "AUTH_REQUIRED", "GROUP_TICKETS_REQUIRED"];
+    const message = reservationError?.message ?? "";
+    return NextResponse.json({
+      error: expectedErrors.includes(message) ? message : "CHECKOUT_UNAVAILABLE",
+    }, { status: 400 });
   }
 
   const origin = new URL(request.url).origin;
