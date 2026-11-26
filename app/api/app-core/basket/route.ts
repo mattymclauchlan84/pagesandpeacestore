@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isMissingEventBookingRuleColumn } from "@/lib/app-core/event-booking-rule";
 import { appCoreDb } from "@/lib/app-core/service";
 
 export const dynamic = "force-dynamic";
@@ -11,14 +12,20 @@ export async function POST(request: Request) {
   if (!ids.length) return NextResponse.json({ items: [] });
 
   const db = appCoreDb();
-  const { data, error } = await db
-    .from("ticket_types")
-    .select("id, name, price_pence, is_active, events!inner(title, slug, status, starts_at)")
-    .in("id", ids)
-    .eq("is_active", true)
-    .eq("events.status", "published")
-    .gt("events.starts_at", new Date().toISOString());
+  const loadItems = (withBookingRule: boolean) => {
+    const table = db.from("ticket_types");
+    const query = withBookingRule
+      ? table.select("id, name, price_pence, is_active, events!inner(title, slug, status, starts_at, booking_rule)")
+      : table.select("id, name, price_pence, is_active, events!inner(title, slug, status, starts_at)");
 
+    return query.in("id", ids)
+      .eq("is_active", true)
+      .eq("events.status", "published")
+      .gt("events.starts_at", new Date().toISOString());
+  };
+
+  const result = await loadItems(true);
+  const { data, error } = isMissingEventBookingRuleColumn(result.error) ? await loadItems(false) : result;
   if (error) return NextResponse.json({ error: "BASKET_UNAVAILABLE" }, { status: 503 });
   return NextResponse.json({ items: data ?? [] }, { headers: { "Cache-Control": "no-store" } });
 }

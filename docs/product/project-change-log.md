@@ -102,3 +102,19 @@ Expand the owner-approved SEO campaign beyond the Visit/Menu conversion slice. T
 
 ### Safety and evaluation
 No new thin location pages, no changes to contact submission, payments, bookings, auth or database. Test responsive layouts, metadata, navigation, menu and contact form UI without sending a message on a production-backed preview. Measure local non-branded search clicks and GBP direction requests against the short six-day Search Console baseline in roughly one month; no ranking or footfall uplift is promised.
+
+## 2026-11-26 — Event ticket options
+
+The product owner approved multiple ticket options on individual events. Staff can configure the name, description, price, availability and optional limit per option. Duplicating an occurrence copies its active options with fresh IDs. A series continues to offer one starting ticket as a template.
+
+Checkout now checks the combined request against the event's shared capacity before creating a reservation. The migration keeps the existing server-only tables and the Stripe fulfilment path. Admin saves and checkout use the same event row lock. Turning an option off leaves its ticket ID, bookings and recorded order-line prices in place.
+
+This slice requires the compatible database migration before the admin changes go live. The production release and live listings remain pending. See the [ticket options specification](../../specs/2026-11-event-ticket-options.md) for verification and rollout.
+
+### Production database migration
+
+The owner approved the production database change on 2026-11-26. Supabase recorded `event_ticket_options` as version `20261126213026`. It corresponds to repository migration `20261126210541_event_ticket_options.sql`. Production verification confirmed both functions are callable by the service role and unavailable to browser roles. Read-only checks confirmed the existing Santa event ticket data was unchanged. The Vercel production application release remains pending.
+
+## 2026-11-26 — Optional child and adult event bookings
+
+The owner approved an event-level booking rule for events such as Elvish Breakfast with Santa. Staff opt in and choose one child ticket type and one accompanying adult type. Customers select both quantities together. Checkout validates the pair per event before creating a reservation, with one place used per ticket. Other events use their existing booking flow. The implementation and tests are recorded in the [slice specification](../../specs/2026-11-child-adult-event-booking.md). The production rollout and event activation require separate approval.
