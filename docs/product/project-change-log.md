@@ -110,3 +110,7 @@ The product owner approved multiple ticket options on individual events. Staff c
 Checkout now checks the combined request against the event's shared capacity before creating a reservation. The migration keeps the existing server-only tables and the Stripe fulfilment path. Admin saves and checkout use the same event row lock. Turning an option off leaves its ticket ID, bookings and recorded order-line prices in place.
 
 This slice requires the compatible database migration before the admin changes go live. The production release and live listings remain pending. See the [ticket options specification](../../specs/2026-11-event-ticket-options.md) for verification and rollout.
+
+### Production database migration
+
+The owner approved the production database change on 2026-11-26. Supabase recorded `event_ticket_options` as version `20261126213026`. It corresponds to repository migration `20261126210541_event_ticket_options.sql`. Production verification confirmed both functions are callable by the service role and unavailable to browser roles. Read-only checks confirmed the existing Santa event ticket data was unchanged. The Vercel production application release remains pending.
