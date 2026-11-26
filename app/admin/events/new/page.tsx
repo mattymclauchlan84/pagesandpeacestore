@@ -3,14 +3,12 @@ import { redirect } from "next/navigation";
 
 import { appCoreDb } from "@/lib/app-core/service";
 import { requireAdminUser } from "@/lib/auth/require-admin-user";
-import { CreateEventSubmit } from "@/components/app-core/create-event-submit";
+import { EventAdminForm } from "@/components/app-core/event-admin-form";
+import { EventTicketOptionsEditor } from "@/components/app-core/event-ticket-options-editor";
+import { isEventUuid, readCapacity, readEventField as value, readTicketOptions, ticketSaveError } from "@/lib/app-core/admin-event-tickets";
 import { EventImageUpload } from "@/components/app-core/event-image-upload";
 import { EventSeriesTemplateSelector, type EventSeriesTemplate } from "@/components/app-core/event-series-template-selector";
 import { parseLondonDateTimeInput, toLondonDateTimeInput } from "@/lib/time/london";
-
-function value(formData: FormData, name: string) {
-  return String(formData.get(name) ?? "").trim();
-}
 
 function slugify(input: string) {
   return input
@@ -36,106 +34,59 @@ async function uniqueSlug(title: string) {
   throw new Error("Unable to create a unique event link");
 }
 
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-async function createEvent(formData: FormData) {
+async function createEvent(_previous: string | null, formData: FormData): Promise<string | null> {
   "use server";
 
   const admin = await requireAdminUser();
   if (!admin) redirect("/sign-in?callbackURL=/admin/events/new");
 
   const eventId = value(formData, "event_id");
-  if (!isUuid(eventId)) throw new Error("Unable to create this event. Please refresh and try again.");
+  if (!isEventUuid(eventId)) return "Unable to create this event. Please refresh and try again.";
 
   const title = value(formData, "title");
   const description = value(formData, "description");
   const startsAtInput = value(formData, "starts_at");
   const endsAtInput = value(formData, "ends_at");
-  const capacity = Number(value(formData, "capacity"));
-  const ticketName = value(formData, "ticket_name");
-  const pricePence = Math.round(Number(value(formData, "ticket_price")) * 100);
+  const capacity = readCapacity(value(formData, "capacity"));
+  const tickets = readTicketOptions(formData);
 
-  if (!title || !description || !startsAtInput || !Number.isInteger(capacity) || capacity < 1 || !ticketName || !Number.isInteger(pricePence) || pricePence < 0) {
-    throw new Error("Please complete the required event and ticket details.");
+  if (!title || !description || !startsAtInput || capacity === null || capacity < 1) {
+    return "Please complete the required event details.";
   }
+  if (!tickets?.length) return "Enter a valid name and price for each ticket option.";
 
   const startsAt = parseLondonDateTimeInput(startsAtInput);
   const endsAt = endsAtInput ? parseLondonDateTimeInput(endsAtInput) : null;
-  if (Number.isNaN(startsAt.getTime()) || (endsAt && Number.isNaN(endsAt.getTime())) || (endsAt && endsAt <= startsAt)) throw new Error("Please provide valid event start and end times.");
+  if (Number.isNaN(startsAt.getTime()) || (endsAt && (Number.isNaN(endsAt.getTime()) || endsAt <= startsAt))) {
+    return "Please provide valid event start and end times.";
+  }
 
   const db = appCoreDb();
   const { data: existingEvent, error: existingError } = await db.from("events").select("id").eq("id", eventId).maybeSingle();
-  if (existingError) throw new Error("Unable to check the event request.");
+  if (existingError) return "Unable to check the event request. Please try again.";
   if (existingEvent) redirect("/admin/events");
 
-  const slug = await uniqueSlug(title);
-  const status = value(formData, "status") === "published" ? "published" : "draft";
-  const seriesName = value(formData, "series_name") || null;
-  const subtitle = value(formData, "subtitle") || null;
-  const shortDescription = value(formData, "short_description") || null;
-  const imageUrl = value(formData, "image_url") || null;
-  const ticketDescription = value(formData, "ticket_description") || null;
-
-  const { data: event, error: eventError } = await db
-    .from("events")
-    .insert({
-      id: eventId,
-      slug,
+  const { error } = await db.rpc("save_event_ticket_options", {
+    p_event_id: eventId,
+    p_event: {
+      slug: await uniqueSlug(title),
       title,
-      series_name: seriesName,
-      subtitle,
-      short_description: shortDescription,
+      series_name: value(formData, "series_name") || null,
+      subtitle: value(formData, "subtitle") || null,
+      short_description: value(formData, "short_description") || null,
       description,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt?.toISOString() ?? null,
       capacity,
-      image_url: imageUrl,
-      status,
-    })
-    .select("id,series_id")
-    .single();
-
-  if (eventError || !event) {
-    if (eventError?.code === "23505") {
-      const { data: duplicate } = await db.from("events").select("id").eq("id", eventId).maybeSingle();
-      if (duplicate) redirect("/admin/events");
-    }
-    throw new Error("Unable to create the event.");
-  }
-
-  const { error: ticketError } = await db.from("ticket_types").insert({
-    event_id: event.id,
-    name: ticketName,
-    description: ticketDescription,
-    price_pence: pricePence,
-    capacity,
-    is_active: true,
+      image_url: value(formData, "image_url") || null,
+      status: value(formData, "status") === "published" ? "published" : "draft",
+    },
+    p_tickets: tickets,
+    p_create: true,
   });
-  if (ticketError) throw new Error("Event was created but its ticket type could not be added.");
 
-  // The first event in a brand-new series becomes that series' reusable starting template.
-  // Existing series defaults are deliberately not overwritten by occurrence-specific edits.
-  if (event.series_id) {
-    await db.from("event_series").update({
-      default_title: title,
-      default_subtitle: subtitle,
-      default_short_description: shortDescription,
-      default_description: description,
-      default_image_url: imageUrl,
-      default_capacity: capacity,
-      default_ticket_name: ticketName,
-      default_ticket_description: ticketDescription,
-      default_ticket_price_pence: pricePence,
-    }).eq("id", event.series_id).is("default_title", null);
-  }
-
+  if (error) return ticketSaveError(error);
   redirect("/admin/events");
-}
-
-function EventRequestId() {
-  return <input type="hidden" name="event_id" value={crypto.randomUUID()} />;
 }
 
 type CreateEventProps = { searchParams: Promise<{ duplicate?: string | string[] }> };
@@ -145,7 +96,7 @@ export default async function CreateEventPage({ searchParams }: CreateEventProps
   if (!admin) redirect("/sign-in?callbackURL=/admin/events/new");
 
   const requestedDuplicate = (await searchParams).duplicate;
-  const duplicateId = typeof requestedDuplicate === "string" && isUuid(requestedDuplicate) ? requestedDuplicate : null;
+  const duplicateId = typeof requestedDuplicate === "string" && isEventUuid(requestedDuplicate) ? requestedDuplicate : null;
   const db = appCoreDb();
 
   const [{ data: seriesRows, error: seriesError }, { data: sourceEvent, error: sourceError }] = await Promise.all([
@@ -157,11 +108,13 @@ export default async function CreateEventPage({ searchParams }: CreateEventProps
   if (seriesError || sourceError) throw new Error("Unable to load event details.");
 
   const { data: sourceTickets, error: sourceTicketError } = sourceEvent
-    ? await db.from("ticket_types").select("name,description,price_pence").eq("event_id", sourceEvent.id).order("created_at", { ascending: true }).limit(1)
+    ? await db.from("ticket_types").select("name,description,price_pence,capacity,is_active").eq("event_id", sourceEvent.id).eq("is_active", true).order("created_at").order("id")
     : { data: [], error: null };
   if (sourceTicketError) throw new Error("Unable to load event ticket details.");
 
-  const sourceTicket = sourceTickets?.[0] ?? null;
+  const initialOptions = sourceTickets?.length
+    ? sourceTickets.map((ticket) => ({ ...ticket, id: crypto.randomUUID() }))
+    : [{ id: crypto.randomUUID(), name: "General admission", description: null, price_pence: 0, capacity: null, is_active: !sourceEvent }];
   const templates = (seriesRows ?? []) as EventSeriesTemplate[];
 
   return (
@@ -171,13 +124,13 @@ export default async function CreateEventPage({ searchParams }: CreateEventProps
         <h1 className="mt-4 text-3xl font-bold tracking-tight">{sourceEvent ? "Duplicate event" : "Create event"}</h1>
         <p className="mt-2 text-foreground/65">
           {sourceEvent
-            ? "The original stays untouched. This copies that exact occurrence; choose a new date and adjust anything that differs."
+            ? "Choose a new date and review the copied details and ticket options."
             : "Choose a series to load its standard event setup, or create a one-off event from scratch."}
         </p>
       </div>
 
-      <form action={createEvent} className="space-y-8 rounded-2xl border border-black/10 bg-white p-6 shadow-sm">
-        <EventRequestId />
+      <EventAdminForm action={createEvent} submitLabel="Create event">
+        <input type="hidden" name="event_id" value={crypto.randomUUID()} />
         <EventSeriesTemplateSelector templates={templates} initialSeriesName={sourceEvent?.series_name} duplicateMode={Boolean(sourceEvent)} />
 
         <section className="space-y-4">
@@ -221,26 +174,8 @@ export default async function CreateEventPage({ searchParams }: CreateEventProps
           </label>
         </section>
 
-        <section className="space-y-4 border-t pt-8">
-          <h2 className="text-lg font-semibold">Ticket setup</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-medium">Ticket name
-              <input name="ticket_name" required defaultValue={sourceTicket?.name ?? "General admission"} className="mt-1 w-full rounded-lg border px-3 py-2 font-normal" />
-            </label>
-            <label className="block text-sm font-medium">Price (£)
-              <input name="ticket_price" type="number" min="0" step="0.01" required defaultValue={sourceTicket ? (sourceTicket.price_pence / 100).toFixed(2) : "0.00"} className="mt-1 w-full rounded-lg border px-3 py-2 font-normal" />
-            </label>
-          </div>
-          <label className="block text-sm font-medium">Ticket description
-            <input name="ticket_description" defaultValue={sourceTicket?.description ?? ""} className="mt-1 w-full rounded-lg border px-3 py-2 font-normal" />
-          </label>
-        </section>
-
-        <div className="flex items-center gap-4 border-t pt-6">
-          <CreateEventSubmit />
-          <Link href="/admin/events" className="text-sm underline underline-offset-4">Cancel</Link>
-        </div>
-      </form>
+        <EventTicketOptionsEditor initialOptions={initialOptions} isCreating />
+      </EventAdminForm>
     </main>
   );
 }

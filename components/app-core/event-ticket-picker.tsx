@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 
-type Ticket = { id: string; name: string; price_pence: number };
+type Ticket = {
+  id: string;
+  name: string;
+  description: string | null;
+  price_pence: number;
+  remaining_seats: number;
+};
 
 export function EventTicketPicker({
   tickets,
@@ -14,22 +20,24 @@ export function EventTicketPicker({
   soldOut: boolean;
   remainingSeats: number;
 }) {
-  const maxQuantity = Math.max(0, Math.min(10, remainingSeats));
-  const [selected, setSelected] = useState(tickets[0]?.id ?? "");
-  const [quantity, setQuantity] = useState(maxQuantity > 0 ? 1 : 0);
+  const [selected, setSelected] = useState(() => tickets.find((ticket) => ticket.remaining_seats > 0)?.id ?? "");
+  const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
+  const selectedTicket = tickets.find((ticket) => ticket.id === selected);
+  const maxQuantity = Math.min(10, selectedTicket?.remaining_seats ?? 0);
 
   function addToBasket() {
-    if (!selected || maxQuantity < 1) return;
+    if (!selectedTicket || maxQuantity < 1) return;
 
     const key = "app_core_event_basket_v1";
     const previous = JSON.parse(window.localStorage.getItem(key) ?? "[]") as { ticketTypeId: string; quantity: number }[];
+    const eventTicketIds = new Set(tickets.map((ticket) => ticket.id));
+    const eventQuantity = previous.reduce((total, item) => eventTicketIds.has(item.ticketTypeId) ? total + item.quantity : total, 0);
     const existing = previous.find((item) => item.ticketTypeId === selected);
     const existingQuantity = existing?.quantity ?? 0;
-    const allowedToAdd = Math.max(0, maxQuantity - existingQuantity);
-
+    const allowedToAdd = Math.min(maxQuantity - existingQuantity, remainingSeats - eventQuantity);
     if (allowedToAdd < 1) {
-      setMessage(`Your basket already contains the maximum available quantity (${maxQuantity}).`);
+      setMessage("Your basket already contains the maximum available quantity for this event or ticket option.");
       return;
     }
 
@@ -39,11 +47,9 @@ export function EventTicketPicker({
     window.localStorage.setItem(key, JSON.stringify(next));
     window.dispatchEvent(new Event("app-core-basket-changed"));
 
-    if (addQuantity < quantity) {
-      setMessage(`Only ${maxQuantity} ticket${maxQuantity === 1 ? " is" : "s are"} currently available. Your basket has been limited to that quantity.`);
-    } else {
-      setMessage("Added to your basket.");
-    }
+    setMessage(addQuantity < quantity
+      ? `Added ${addQuantity} ${addQuantity === 1 ? "ticket" : "tickets"}. Your basket has reached the available limit.`
+      : "Added to your basket.");
   }
 
   function handleQuantity(value: string) {
@@ -58,10 +64,20 @@ export function EventTicketPicker({
       <h2 className="text-lg font-semibold text-foreground">Tickets</h2>
       <label className="mt-4 block text-sm font-medium">
         Ticket type
-        <select value={selected} onChange={(event) => setSelected(event.target.value)} disabled={soldOut} className="mt-1 w-full rounded-lg border px-3 py-2">
-          {tickets.map((ticket) => <option key={ticket.id} value={ticket.id}>{ticket.name} — £{(ticket.price_pence / 100).toFixed(2)}</option>)}
+        <select value={selected} onChange={(event) => {
+          setSelected(event.target.value);
+          setQuantity(1);
+          setMessage("");
+        }} disabled={soldOut} className="mt-1 w-full rounded-lg border px-3 py-2">
+          {soldOut ? <option value="">Sold out</option> : null}
+          {tickets.map((ticket) => (
+            <option key={ticket.id} value={ticket.id} disabled={ticket.remaining_seats <= 0}>
+              {ticket.name} — £{(ticket.price_pence / 100).toFixed(2)}{ticket.remaining_seats <= 0 ? " (sold out)" : ""}
+            </option>
+          ))}
         </select>
       </label>
+      {selectedTicket?.description ? <p className="mt-2 text-sm text-foreground/70">{selectedTicket.description}</p> : null}
       <label className="mt-3 block text-sm font-medium">
         Quantity
         <input

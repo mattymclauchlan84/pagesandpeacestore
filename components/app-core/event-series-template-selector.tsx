@@ -22,11 +22,15 @@ type Props = {
   duplicateMode?: boolean;
 };
 
-function setFormValue(form: HTMLFormElement | null, name: string, value: string) {
+function setFormValue(form: HTMLFormElement | null, name: string, value: string | boolean) {
   if (!form) return;
   const field = form.elements.namedItem(name);
   if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
-    field.value = value;
+    if (field instanceof HTMLInputElement && field.type === "checkbox") {
+      field.checked = Boolean(value);
+    } else {
+      field.value = String(value);
+    }
     field.dispatchEvent(new Event("input", { bubbles: true }));
     field.dispatchEvent(new Event("change", { bubbles: true }));
   }
@@ -50,6 +54,8 @@ export function EventSeriesTemplateSelector({ templates, initialSeriesName = nul
     setFormValue(form, "ticket_name", template.default_ticket_name ?? "General admission");
     setFormValue(form, "ticket_description", template.default_ticket_description ?? "");
     setFormValue(form, "ticket_price", ((template.default_ticket_price_pence ?? 0) / 100).toFixed(2));
+    setFormValue(form, "ticket_capacity", "");
+    setFormValue(form, "ticket_active", true);
     window.dispatchEvent(new CustomEvent("event-series-template-image", { detail: { imageUrl: template.default_image_url ?? "" } }));
   }
 
@@ -59,6 +65,8 @@ export function EventSeriesTemplateSelector({ templates, initialSeriesName = nul
     setFormValue(form, "capacity", "20");
     setFormValue(form, "ticket_name", "General admission");
     setFormValue(form, "ticket_price", "0.00");
+    setFormValue(form, "ticket_capacity", "");
+    setFormValue(form, "ticket_active", true);
     window.dispatchEvent(new CustomEvent("event-series-template-image", { detail: { imageUrl: "" } }));
   }
 
@@ -116,7 +124,7 @@ export function EventSeriesTemplateSelector({ templates, initialSeriesName = nul
         {selected
           ? `Using ${selected.name} defaults. Date/time stays blank and you can change any populated field for this occurrence.`
           : choice === "new"
-            ? "Create the first event normally. Its content, image, capacity and ticket setup become the starting defaults for future dates in this series."
+            ? "Create the first event normally. Its content, image, capacity and first available ticket option become the starting defaults for future dates in this series."
             : "Use this for an event that does not belong to a recurring series."}
       </p>
     </div>
