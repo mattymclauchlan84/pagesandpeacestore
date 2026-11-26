@@ -1,12 +1,12 @@
 # Event ticket options
 
-**Status:** Approved and implemented on the feature branch on 2026-11-26. Production release is pending.
+**Status:** Released to production on 2026-11-26 in PR #49.
 
 ## Outcome
 
 Staff can offer more than one named, priced ticket option on selected events. Customers can buy a mix of options in the same booking, with the event’s total capacity enforced for the whole basket.
 
-## Verified current behaviour
+## Findings before implementation
 
 - GitHub `mattymclauchlan84/pagesandpeacestore` main and the READY Vercel production deployment for `pagesandpeace.co.uk` matched at `e0c55ba970623ff24db156075f22f1f58556f612`. Vercel’s production Supabase URL points at `pigyhsjzcoofaajguzhr`.
 - Create and edit expose one ticket type. Edit and duplicate load just the first ticket row. The old multi-option editor is outside the active edit route.
@@ -38,3 +38,6 @@ The production build, TypeScript check and lint for changed files passed. Reposi
 ## Rollout and recovery
 
 Release the compatible reservation fix before enabling the admin changes in production. If the application is rolled back, retain the corrected reservation logic and pause edits or duplication of multi-option events until the updated admin screens return. Do not revert to the known capacity defect while mixed-ticket bookings are possible. Production migration, deployment and any live changes to ticket listings require separate approval. Record the completed slice and verified checks in the project change log before release.
+
+## Production verification
+The initial reservation migration was applied before release. Supabase recorded it as `20261126213026_event_ticket_options` for repository migration `20261126210541_event_ticket_options.sql`. The combined release also includes the [optional child and adult booking rule](2026-11-child-adult-event-booking.md). The live mixed-ticket order, both Stripe refunds, capacity recovery and email counts are recorded in the [project change log](../docs/product/project-change-log.md).

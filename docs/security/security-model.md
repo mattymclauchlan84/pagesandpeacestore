@@ -27,6 +27,10 @@ Stripe Checkout is a high-consequence boundary. Checkout must validate server-si
 
 Webhook handling must authenticate Stripe signatures, be idempotent/replay-safe and avoid duplicate fulfilment. Refunds require authorization, auditable state transitions and human-controlled release policy.
 
+Event reservations check both shared capacity and ticket-option limits within the same transaction. The optional child and adult rule is enforced for the affected event in the server-only reservation function. Ticket IDs, prices and quantities are validated server-side before Stripe Checkout.
+
+Use the Pages & Peace admin refund workflow for ticket refunds. Stripe-only refunds do not update ticket balances through this workflow. The current implementation can treat a pending refund as successful and can leave a grouped booking without its last adult ticket. These are documented gaps. Verify provider status and remaining group composition when reconciling a refund.
+
 ## Customer data
 Customer identity, bookings, orders, payment references and communication details are sensitive application data. Access should be purpose-limited. Do not transfer production customer data to external services or staging without explicit approval and a documented need.
 

@@ -9,7 +9,7 @@ This roadmap begins from the system observed at baseline. Earlier product intent
 Pages & Peace currently supports:
 - public marketing, menu/opening-hours and event discovery;
 - customer signup, signin, recovery and account areas;
-- event baskets, multi-event checkout and Stripe payment;
+- per-event ticket options, optional child and accompanying adult bookings, shared event capacity, multi-event baskets and Stripe Checkout;
 - booking and order history;
 - administrative event, booking, attendance, refund, customer, menu and store-setting workflows;
 - transactional email, newsletter integration and image handling.
@@ -54,3 +54,6 @@ Improve local discovery of the Rossington café, menu and community events with 
 
 ## Approved growth campaign — 2026-10-25
 The owner approved a broader Search Console-led local SEO campaign, including substantial homepage, About and Contact improvements and useful new pages where justified. Primary outcome: more in-person visits to the Rossington café/bookshop, supported by local discovery and event bookings. Prioritise existing pages and real business content over thin keyword variants. Review non-branded local search impressions/clicks and Google Business Profile direction requests after approximately one month. Preserve CMS opening hours and commerce functionality.
+
+## Event ticketing reliability follow-ups — 2026-11-26
+The live mixed-ticket purchase and sequential refunds reconciled. Isolated tests identified two open gaps for future approval. The app can release capacity while a Stripe refund is pending, and a partial refund can remove the last adult from a booking with children still attending. See the [group booking specification](../../specs/2026-11-child-adult-event-booking.md).

@@ -46,7 +46,7 @@ Do not modify production data, production configuration, authentication/authoriz
 
 Destructive database changes, material auth/security changes, production-data operations, external transfers of customer data and consequential automation require explicit human approval plus a rollback/recovery plan.
 
-Never copy staging data over production. Production is authoritative. The production Supabase project is `pigyhsjzcoofaajguzhr`; staging is `ehbzvkynjcrewlzjgtkq`.
+Production Supabase project `pigyhsjzcoofaajguzhr` is the sole active database. The former staging project `ehbzvkynjcrewlzjgtkq` was deleted. A Vercel preview pointed at production Supabase is for read-only checks. Use an isolated database with synthetic data and Stripe Sandbox for tests that create bookings, payments, refunds, emails or admin changes.
 
 ## High-consequence actions
 Keep human approval for payments/refunds, customer communications, deletion, contracts, staff decisions, security permissions and production migrations. AI-generated code is not presumed correct.
@@ -62,6 +62,14 @@ Existing cutover documents are historical evidence and must not be rewritten to 
 The application is a Next.js/React/TypeScript App Router system using Supabase, Stripe, Resend, Cloudinary and Beehiiv. The newer `app_core` Supabase schema is designed as server-only. Browser roles must not be granted direct access merely for convenience. Service-role code bypasses ordinary browser RLS boundaries and is security-sensitive.
 
 Event timestamps represent instants. Display UK event times using `Europe/London`; do not bulk-shift stored timestamps to compensate for BST/GMT presentation errors.
+
+## Event ticketing
+Read the [ticket options](specs/2026-11-event-ticket-options.md) and [child and adult booking](specs/2026-11-child-adult-event-booking.md) specifications when changing event commerce.
+
+- Preserve ticket IDs and historical order lines. Check the total requested seats across all ticket types for the same event and apply any per-option limits inside the reservation transaction.
+- Keep the child and accompanying adult rule opt-in per event. When enabled, require both active ticket types for that event before reserving seats. Each ticket uses one place.
+- Process ticket refunds through Pages & Peace admin so amounts, ticket quantities, availability, order history and emails stay in sync. For grouped bookings, check that children who still attend have an adult ticket before issuing a partial refund. Check the Stripe refund status independently when settlement is in doubt. The current admin can treat a pending Stripe refund as complete.
+- Verify customer ticket quantities, shared capacity, Stripe confirmation, partial and remaining refunds, and notification delivery for applicable changes. Record live verification separately from isolated tests and exclude customer details and Stripe identifiers.
 
 ## Quality
 For every slice, identify relevant lint/build/tests and execute what exists. Where automated coverage is absent, document the gap and use explicit manual acceptance checks. Do not claim checks were run when they were not.
