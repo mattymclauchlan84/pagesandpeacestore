@@ -8,6 +8,8 @@ import {
 } from "./event-booking-rule";
 import { appCoreDb } from "./service";
 
+export const LIMITED_AVAILABILITY_THRESHOLD = 5;
+
 type SeatBooking = {
   ticket_type_id: string;
   quantity: number;

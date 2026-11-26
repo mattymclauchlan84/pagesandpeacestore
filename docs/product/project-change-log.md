@@ -2,6 +2,10 @@
 
 This log records material product, architecture, security and delivery decisions from the engineering-governance baseline onward. Earlier rationale is **unknown / pre-baseline** unless supported by repository evidence.
 
+## Public event availability labels
+
+The public event list and individual booking pages show “Limited availability” when one to five places are bookable and hide the availability label above that threshold. Sold-out and unavailable states remain visible. Ticket quantity limits and the admin capacity display continue to use the actual counts.
+
 ## 2026-09-20 — Baseline v1
 ### Decision
 Adopt a repository-based AI-assisted engineering governance model for the existing live Pages & Peace application.

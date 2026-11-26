@@ -11,7 +11,7 @@ export const revalidate = 0;
 
 import Link from "next/link";
 import { formatLondonDateTime } from "@/lib/time/london";
-import { listPublishedEvents } from "@/lib/app-core/events";
+import { LIMITED_AVAILABILITY_THRESHOLD, listPublishedEvents } from "@/lib/app-core/events";
 import { listPublicEventSeries } from "@/lib/app-core/event-series";
 import MarketingSignup from "@/components/MarketingSignup";
 
@@ -82,11 +82,11 @@ export default async function EventsPage() {
                   {event.short_description && (
                     <p className="text-neutral-700">{event.short_description}</p>
                   )}
-                  <p className="text-sm font-medium text-neutral-700">
-                    {event.remaining_seats > 0
-                      ? `${event.remaining_seats} places remaining`
-                      : "Sold out"}
-                  </p>
+                  {event.remaining_seats <= 0 ? (
+                    <p className="text-sm font-medium text-neutral-700">Sold out</p>
+                  ) : event.remaining_seats <= LIMITED_AVAILABILITY_THRESHOLD ? (
+                    <p className="text-sm font-medium text-amber-800">Limited availability</p>
+                  ) : null}
                   <Link
                     href={`/events/${event.slug}`}
                     className="inline-flex rounded-md bg-neutral-950 px-4 py-2 font-semibold text-white"
