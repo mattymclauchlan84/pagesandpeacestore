@@ -130,7 +130,7 @@ export function EventGroupTicketPicker({
               {ticket.description ? <p className="mt-1 text-sm text-foreground/70">{ticket.description}</p> : null}
             </div>
           ))}
-          {overCapacity ? <p className="text-sm font-medium text-red-800" role="status">There are only {remainingSeats} places left. Reduce your group size.</p> : null}
+          {overCapacity ? <p className="text-sm font-medium text-red-800" role="status">There aren’t enough places for this group. Reduce your group size.</p> : null}
           <div className="flex justify-between text-sm font-semibold">
             <span>{count} {count === 1 ? "place" : "places"}</span><span>{price(total)}</span>
           </div>

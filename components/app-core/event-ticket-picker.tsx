@@ -89,7 +89,6 @@ export function EventTicketPicker({
           max={maxQuantity || 1}
           className="mt-1 w-full rounded-lg border px-3 py-2"
         />
-        {!soldOut ? <span className="mt-1 block text-xs text-foreground/60">Maximum currently available: {maxQuantity}</span> : null}
       </label>
       <button type="button" onClick={addToBasket} disabled={soldOut || !selected || maxQuantity < 1} className="mt-4 w-full rounded-lg bg-black px-4 py-3 font-semibold text-white disabled:opacity-50">
         {soldOut ? "Sold out" : "Add to basket"}
