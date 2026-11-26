@@ -1,5 +1,11 @@
 import "server-only";
 
+import {
+  hasRequiredGroupTickets,
+  isMissingEventBookingRuleColumn,
+  readEventBookingRule,
+  type EventBookingRule,
+} from "./event-booking-rule";
 import { appCoreDb } from "./service";
 
 type SeatBooking = {
@@ -53,37 +59,69 @@ export function hasEventStarted(startsAt: string) {
   return Date.parse(startsAt) <= Date.now();
 }
 
+type AvailableTicket = { id: string; remaining_seats: number };
+
+function bookableEventSeats(eventSeats: number, tickets: AvailableTicket[], rule: EventBookingRule | null) {
+  if (rule && (eventSeats < 2 || !hasRequiredGroupTickets(rule, new Set(tickets.filter(
+    (ticket) => ticket.remaining_seats > 0,
+  ).map((ticket) => ticket.id))))) {
+    return 0;
+  }
+  return Math.min(eventSeats, tickets.reduce((total, ticket) => total + ticket.remaining_seats, 0));
+}
+
 export async function listPublishedEvents() {
   const db = appCoreDb();
-  const { data, error } = await db.from("events")
-    .select("id,slug,title,subtitle,short_description,starts_at,ends_at,capacity,image_url,series_id,series_name,ticket_types(id,capacity)")
-    .eq("status", "published")
-    .eq("ticket_types.is_active", true)
-    .gte("starts_at", new Date().toISOString())
-    .order("starts_at", { ascending: true });
+  const now = new Date().toISOString();
+  const loadEvents = (withBookingRule: boolean) => {
+    const table = db.from("events");
+    const query = withBookingRule
+      ? table.select("id,slug,title,subtitle,short_description,starts_at,ends_at,capacity,image_url,series_id,series_name,booking_rule,ticket_types(id,capacity)")
+      : table.select("id,slug,title,subtitle,short_description,starts_at,ends_at,capacity,image_url,series_id,series_name,ticket_types(id,capacity)");
 
+    return query.eq("status", "published")
+      .eq("ticket_types.is_active", true)
+      .gte("starts_at", now)
+      .order("starts_at", { ascending: true });
+  };
+
+  const result = await loadEvents(true);
+  const { data, error } = isMissingEventBookingRuleColumn(result.error) ? await loadEvents(false) : result;
   if (error) throw new Error("Unable to load events");
-  return Promise.all((data ?? []).map(async ({ ticket_types: tickets, ...event }) => {
+
+  return Promise.all((data ?? []).map(async (row) => {
+    const { ticket_types: tickets, booking_rule: bookingRuleValue, ...event } = {
+      booking_rule: null as unknown,
+      ...row,
+    };
+    const bookingRule = readEventBookingRule(bookingRuleValue);
     const reserved = await reservedSeats(event.id);
     const remainingSeats = Math.max(0, event.capacity - reserved.total);
-    const optionSeats = tickets.reduce((total, ticket) => (
-      total + availableOptionSeats(ticket, remainingSeats, reserved.byTicketType)
-    ), 0);
+    const options = tickets.map((ticket) => ({
+      id: ticket.id,
+      remaining_seats: availableOptionSeats(ticket, remainingSeats, reserved.byTicketType),
+    }));
 
-    return { ...event, remaining_seats: Math.min(remainingSeats, optionSeats) };
+    return { ...event, remaining_seats: bookableEventSeats(remainingSeats, options, bookingRule) };
   }));
 }
 
 export async function getPublishedEvent(slug: string) {
   const db = appCoreDb();
-  const { data: event, error } = await db.from("events")
-    .select("id,slug,legacy_slug,title,subtitle,short_description,description,starts_at,ends_at,capacity,image_url,series_id,series_name")
-    .or(`slug.eq.${slug},legacy_slug.eq.${slug}`)
-    .eq("status", "published")
-    .maybeSingle();
+  const loadEvent = (withBookingRule: boolean) => {
+    const table = db.from("events");
+    const query = withBookingRule
+      ? table.select("id,slug,legacy_slug,title,subtitle,short_description,description,starts_at,ends_at,capacity,image_url,series_id,series_name,booking_rule")
+      : table.select("id,slug,legacy_slug,title,subtitle,short_description,description,starts_at,ends_at,capacity,image_url,series_id,series_name");
 
+    return query.or(`slug.eq.${slug},legacy_slug.eq.${slug}`).eq("status", "published").maybeSingle();
+  };
+
+  const result = await loadEvent(true);
+  const { data: event, error } = isMissingEventBookingRuleColumn(result.error) ? await loadEvent(false) : result;
   if (error || !event) return null;
 
+  const bookingRule = readEventBookingRule("booking_rule" in event ? event.booking_rule : null);
   const [{ data: tickets, error: ticketError }, reserved] = await Promise.all([
     db.from("ticket_types")
       .select("id,name,description,price_pence,capacity")
@@ -103,7 +141,10 @@ export async function getPublishedEvent(slug: string) {
     ...ticket,
     remaining_seats: availableOptionSeats(ticket, remainingSeats, reserved.byTicketType),
   }));
-  const bookableSeats = Math.min(remainingSeats, ticketTypes.reduce((total, ticket) => total + ticket.remaining_seats, 0));
-
-  return { ...event, ticket_types: ticketTypes, remaining_seats: bookableSeats };
+  return {
+    ...event,
+    booking_rule: bookingRule,
+    ticket_types: ticketTypes,
+    remaining_seats: bookableEventSeats(remainingSeats, ticketTypes, bookingRule),
+  };
 }

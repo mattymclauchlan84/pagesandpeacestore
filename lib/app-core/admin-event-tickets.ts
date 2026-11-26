@@ -57,6 +57,8 @@ export function ticketSaveError(error: { message: string }) {
       return "Total capacity cannot be lower than the number of reserved places.";
     case "TICKET_CAPACITY_BELOW_RESERVATIONS":
       return "A ticket option’s capacity cannot be lower than the number already reserved for it.";
+    case "GROUP_RULE_INVALID":
+      return "Choose two different ticket options that are available for sale, or turn off the child and adult booking rule.";
     case "INVALID_TICKETS":
       return "Unable to save these ticket options. Check the details and try again.";
     case "EVENT_NOT_FOUND":

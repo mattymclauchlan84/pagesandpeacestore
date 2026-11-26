@@ -114,3 +114,7 @@ This slice requires the compatible database migration before the admin changes g
 ### Production database migration
 
 The owner approved the production database change on 2026-11-26. Supabase recorded `event_ticket_options` as version `20261126213026`. It corresponds to repository migration `20261126210541_event_ticket_options.sql`. Production verification confirmed both functions are callable by the service role and unavailable to browser roles. Read-only checks confirmed the existing Santa event ticket data was unchanged. The Vercel production application release remains pending.
+
+## 2026-11-26 — Optional child and adult event bookings
+
+The owner approved an event-level booking rule for events such as Elvish Breakfast with Santa. Staff opt in and choose one child ticket type and one accompanying adult type. Customers select both quantities together. Checkout validates the pair per event before creating a reservation, with one place used per ticket. Other events use their existing booking flow. The implementation and tests are recorded in the [slice specification](../../specs/2026-11-child-adult-event-booking.md). The production rollout and event activation require separate approval.
