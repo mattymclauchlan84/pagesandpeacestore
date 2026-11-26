@@ -109,12 +109,22 @@ The product owner approved multiple ticket options on individual events. Staff c
 
 Checkout now checks the combined request against the event's shared capacity before creating a reservation. The migration keeps the existing server-only tables and the Stripe fulfilment path. Admin saves and checkout use the same event row lock. Turning an option off leaves its ticket ID, bookings and recorded order-line prices in place.
 
-This slice requires the compatible database migration before the admin changes go live. The production release and live listings remain pending. See the [ticket options specification](../../specs/2026-11-event-ticket-options.md) for verification and rollout.
+This slice requires the compatible database migration before the admin changes go live. At this point the application release and live ticket changes were pending. See the [ticket options specification](../../specs/2026-11-event-ticket-options.md) for verification and rollout.
 
 ### Production database migration
 
-The owner approved the production database change on 2026-11-26. Supabase recorded `event_ticket_options` as version `20261126213026`. It corresponds to repository migration `20261126210541_event_ticket_options.sql`. Production verification confirmed both functions are callable by the service role and unavailable to browser roles. Read-only checks confirmed the existing Santa event ticket data was unchanged. The Vercel production application release remains pending.
+The owner approved the production database change on 2026-11-26. Supabase recorded `event_ticket_options` as version `20261126213026`. It corresponds to repository migration `20261126210541_event_ticket_options.sql`. Production verification confirmed both functions are callable by the service role and unavailable to browser roles. Read-only checks confirmed the existing Santa event ticket data was unchanged. The Vercel production application release was still pending when the migration was applied.
 
 ## 2026-11-26 — Optional child and adult event bookings
 
-The owner approved an event-level booking rule for events such as Elvish Breakfast with Santa. Staff opt in and choose one child ticket type and one accompanying adult type. Customers select both quantities together. Checkout validates the pair per event before creating a reservation, with one place used per ticket. Other events use their existing booking flow. The implementation and tests are recorded in the [slice specification](../../specs/2026-11-child-adult-event-booking.md). The production rollout and event activation require separate approval.
+The owner approved an event-level booking rule for events such as Elvish Breakfast with Santa. Staff opt in and choose one child ticket type and one accompanying adult type. Customers select both quantities together. Checkout validates the pair per event before creating a reservation, with one place used per ticket. Other events use their existing booking flow. The implementation and tests are recorded in the [slice specification](../../specs/2026-11-child-adult-event-booking.md). The owner subsequently approved the production rollout and event activation.
+
+### Production release and verification
+
+Both ticketing slices went live on 2026-11-26 in commit `05b74e5f856e1e53df87a1eb2b3251a83b46c2fa` ([PR #49](https://github.com/mattymclauchlan84/pagesandpeacestore/pull/49), including [PR #50](https://github.com/mattymclauchlan84/pagesandpeacestore/pull/50)). Supabase recorded `event_child_adult_booking` as `20261126215611`, corresponding to repository migration `20261126213947_event_child_adult_booking.sql`. The rule was enabled on Elvish Breakfast with Santa after deployment. The live group form and an ordinary event picker were checked.
+
+A Stripe Sandbox payment of £33 for two children and one adult succeeded. The owner then completed a £5 live smoke test with two Child tickets at £2 and one Parent ticket at £1. Both ticket types appeared in the account. Stripe and the app reconciled a £2 single-ticket refund and a £3 refund of the remaining tickets. All three places returned, leaving 31 available at reconciliation. Logs showed one payment confirmation, one booking email and one email per refund. Live prices were subsequently verified at £15 for Child and £3 for Parent.
+
+### Open refund gaps
+
+Isolated testing showed that the current admin can release a place while Stripe reports a pending refund, and that it can refund the last adult while leaving child tickets active. Neither gap occurred in the reconciled live test. The [group booking specification](../../specs/2026-11-child-adult-event-booking.md) records the operating guidance and outstanding work.
