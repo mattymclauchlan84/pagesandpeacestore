@@ -7,7 +7,9 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function POST(request: Request) {
   const admin = await requireAdminUser();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (process.env.VERCEL_ENV === "preview") return NextResponse.json({ error: "Preview is read-only." }, { status: 403 });
+  const localUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
+  const isolatedTest = process.env.ALLOW_LOCAL_IN_STORE_TESTS === "true" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(localUrl);
+  if (process.env.VERCEL_ENV !== "production" && !isolatedTest) return NextResponse.json({ error: "Non-production mode is read-only. Use an isolated local database for tests." }, { status: 403 });
   let data: Record<string, unknown>;
   try { data = await request.json(); } catch { return NextResponse.json({ error: "Invalid request" }, { status: 400 }); }
   const orderId = typeof data.orderId === "string" ? data.orderId : "";
