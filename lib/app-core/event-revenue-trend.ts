@@ -12,6 +12,11 @@ export function eventRevenueMonthKey(date: Date) {
   return `${year}-${month}`;
 }
 
+export function eventTradingYearStartMonth(currentMonth: string) {
+  const [year, month] = currentMonth.split("-").map(Number);
+  return `${month >= 11 ? year : year - 1}-11`;
+}
+
 export type EventRevenueMonth = {
   key: string;
   name: string;

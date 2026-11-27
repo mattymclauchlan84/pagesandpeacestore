@@ -1,13 +1,14 @@
 import Link from "next/link";
 
 import EventRevenueComparison from "@/components/admin/event-revenue-comparison";
-import { eventRevenueComparison, eventRevenueMonthKey } from "@/lib/app-core/event-revenue-trend";
+import EventTypeRevenue from "@/components/admin/event-type-revenue";
+import { formatLondonDateTime } from "@/lib/time/london";
+import { eventRevenueComparison, eventRevenueMonthKey, eventTradingYearStartMonth } from "@/lib/app-core/event-revenue-trend";
 
 import { getAdminEventOrders } from "@/lib/app-core/event-orders";
 import { requireAdminUser } from "@/lib/auth/require-admin-user";
 
 const money = (pence: number) => new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
-const percent = new Intl.NumberFormat("en-GB", { style: "percent" });
 
 function canonicalEventName(seriesName: string | null | undefined, title: string | null | undefined, fallback: string) {
   if (seriesName?.trim()) return seriesName.trim();
@@ -49,37 +50,43 @@ export default async function AppCoreEventSalesSummary() {
   const netQuantity = (line: (typeof lines)[number]) => Math.max(0, line.quantity - line.refundedQuantity);
   const netRevenue = (line: (typeof lines)[number]) => Math.max(0, line.grossPence - line.refundedPence);
 
-  const revenue = lines.reduce((total, line) => total + netRevenue(line), 0);
-  const sumupRevenue = lines.filter((line) => line.isSumUp).reduce((total, line) => total + netRevenue(line), 0);
-  const refunded = lines.reduce((total, line) => total + line.refundedPence, 0);
-  const tickets = lines.reduce((total, line) => total + netQuantity(line), 0);
+  const now = new Date();
+  const currentMonth = eventRevenueMonthKey(now);
+  const startMonth = eventTradingYearStartMonth(currentMonth);
+  const tradingYearLines = lines.filter((line) => line.saleMonth >= startMonth && line.saleMonth <= currentMonth);
+  const dateOptions = { day: "numeric", month: "short", year: "numeric" } as const;
+  const tradingYearStart = formatLondonDateTime(`${startMonth}-01T12:00:00Z`, dateOptions);
+  const today = formatLondonDateTime(now, dateOptions);
+
+  const revenue = tradingYearLines.reduce((total, line) => total + netRevenue(line), 0);
+  const sumupRevenue = tradingYearLines.filter((line) => line.isSumUp).reduce((total, line) => total + netRevenue(line), 0);
+  const refunded = tradingYearLines.reduce((total, line) => total + line.refundedPence, 0);
+  const tickets = tradingYearLines.reduce((total, line) => total + netQuantity(line), 0);
 
   const orderNet = new Map<string, number>();
-  for (const line of lines) orderNet.set(line.orderId, (orderNet.get(line.orderId) ?? 0) + netRevenue(line));
+  for (const line of tradingYearLines) orderNet.set(line.orderId, (orderNet.get(line.orderId) ?? 0) + netRevenue(line));
   const activeOrders = [...orderNet.values()].filter((amount) => amount > 0).length;
 
-  const now = new Date();
   const totalsByMonth = new Map<string, number>();
   for (const line of lines) {
     totalsByMonth.set(line.saleMonth, (totalsByMonth.get(line.saleMonth) ?? 0) + netRevenue(line));
   }
-  const thisMonthRevenue = totalsByMonth.get(eventRevenueMonthKey(now)) ?? 0;
+  const thisMonthRevenue = totalsByMonth.get(currentMonth) ?? 0;
   const trend = eventRevenueComparison(now, totalsByMonth);
 
   const byEvent = new Map<string, { name: string; revenue: number; tickets: number }>();
-  for (const line of lines) {
+  for (const line of tradingYearLines) {
     const current = byEvent.get(line.name) ?? { name: line.name, revenue: 0, tickets: 0 };
     current.revenue += netRevenue(line);
     current.tickets += netQuantity(line);
     byEvent.set(line.name, current);
   }
-  const events = [...byEvent.values()].filter((event) => event.revenue > 0 || event.tickets > 0).sort((a, b) => b.revenue - a.revenue);
-  const maxEventRevenue = Math.max(...events.map((event) => event.revenue), 1);
+  const events = [...byEvent.values()].filter((event) => event.revenue > 0 || event.tickets > 0).sort((a, b) => b.revenue - a.revenue || a.name.localeCompare(b.name));
 
   return <div className="space-y-8">
     <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><h2 className="text-2xl font-bold">Event sales</h2><p className="mt-1 text-sm text-emerald-900/70">All paid event sales in one view, net of partial and full refunds.</p></div>
+        <div><h2 className="text-2xl font-bold">Event sales year to date</h2><p className="mt-1 text-sm text-emerald-900/70">{tradingYearStart} to {today} · Net of refunds.</p></div>
         <Link href="/admin/events/bookings" className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white">View booking register & refunds</Link>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-6">
@@ -94,10 +101,7 @@ export default async function AppCoreEventSalesSummary() {
 
     <EventRevenueComparison months={trend} />
 
-    <section className="rounded-2xl border bg-white p-4 sm:p-6">
-      <div><h2 className="text-xl font-bold">Revenue by event type</h2><p className="mt-1 text-sm text-foreground/60">Event series ranked by net revenue, with their share of event sales.</p></div>
-      {events.length ? <div className="mt-6 space-y-4">{events.map((event) => <div key={event.name}><div className="flex justify-between gap-4 text-sm"><span className="font-medium">{event.name} <span className="text-foreground/60">· {event.tickets} ticket{event.tickets === 1 ? "" : "s"}</span></span><span className="font-semibold text-right">{money(event.revenue)}{revenue > 0 ? <span className="ml-2 text-xs font-normal text-foreground/65">{percent.format(event.revenue / revenue)}</span> : null}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-[#f1ede7]"><div className="h-full rounded-full bg-emerald-700" style={{ width: `${(event.revenue / maxEventRevenue) * 100}%` }} /></div></div>)}</div> : <p className="mt-6 text-sm text-foreground/60">No paid event revenue yet.</p>}
-    </section>
+    <EventTypeRevenue events={events} totalRevenue={revenue} />
   </div>;
 }
 
