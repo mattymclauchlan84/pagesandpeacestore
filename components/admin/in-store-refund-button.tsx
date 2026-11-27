@@ -71,7 +71,7 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
         <label className="block text-sm font-medium">SumUp refund reference
           <input value={reference} onChange={(e) => setReference(e.target.value)} className="mt-1 w-full rounded-lg border p-3" placeholder="From completed SumUp refund"/>
         </label>
-        <label className="block text-sm font-medium">SumUp refund date/time
+        <label className="block text-sm font-medium">SumUp refund date/time (device local timezone)
           <input type="datetime-local" value={refundDate} onChange={(e) => setRefundDate(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/>
         </label>
         <label className="block text-sm font-medium">Reason
