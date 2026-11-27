@@ -2,7 +2,7 @@ import "server-only";
 
 import { appCoreDb } from "@/lib/app-core/service";
 
-type OrderRow = { id: string; auth_user_id: string | null; status: string; total_pence: number; currency: string; created_at: string; refund_status: string; refunded_total_pence: number; customer_name: string | null; customer_email: string | null };
+type OrderRow = { id: string; auth_user_id: string | null; status: string; total_pence: number; currency: string; created_at: string; paid_at: string | null; refund_status: string; refunded_total_pence: number; customer_name: string | null; customer_email: string | null };
 type LineRow = { id: string; order_id: string; item_type: string; item_name: string; quantity: number; unit_amount_pence: number; ticket_type_id: string | null; refunded_quantity: number; refunded_amount_pence: number };
 type BookingRow = { id: string; order_line_id: string; event_id: string; ticket_type_id: string; auth_user_id: string; quantity: number; status: string; created_at: string };
 type EventRow = { id: string; slug: string; title: string; series_name: string | null; starts_at: string };
@@ -17,7 +17,7 @@ async function loadEventOrders(authUserId?: string) {
   const db = appCoreDb();
   let query = db
     .from("orders")
-    .select("id, auth_user_id, status, total_pence, currency, created_at, refund_status, refunded_total_pence, customer_name, customer_email")
+    .select("id, auth_user_id, status, total_pence, currency, created_at, paid_at, refund_status, refunded_total_pence, customer_name, customer_email")
     .in("status", ["paid", "partially_refunded", "refunded"]);
   if (authUserId) query = query.eq("auth_user_id", authUserId);
   const { data: orders, error } = await query.order("created_at", { ascending: false }).limit(2000);
