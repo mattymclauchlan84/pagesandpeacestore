@@ -58,6 +58,10 @@ The owner approved a broader Search Console-led local SEO campaign, including su
 ## Event ticketing reliability follow-ups — 2026-11-26
 The live mixed-ticket purchase and sequential refunds reconciled. Isolated tests identified two open gaps for future approval. The app can release capacity while a Stripe refund is pending, and a partial refund can remove the last adult from a booking with children still attending. See the [group booking specification](../../specs/2026-11-child-adult-event-booking.md).
 
-## Approved in-store SumUp event tickets — 2026-11-27 (development)
+## Released in-store SumUp event tickets — 2026-11-27
 
-The owner approved a staffed admin workflow for occasional event tickets already paid through SumUp. It should create genuine capacity-reducing bookings and reconcile manual POS refunds, without Stripe charges. Match existing verified customers by email; for walk-in guests retain contact details without creating an unverified account. Automatically send one transactional confirmation email; for guests include optional registration instructions in that same email. Marketing preferences remain exclusively in the customer signup/account journey. Preserve multi-option capacity, child/adult pairing, historical financial records, original payment/refund references and UK event times. Implementation is on a separate branch and requires an isolated booking/refund regression suite, security review and read-only preview acceptance and separate production migration/release approval. Confirmation recovery and an operational write switch are part of the release candidate. See the [in-store sales specification](../../specs/2026-11-sumup-in-store-event-sales.md).
+Staff can record completed SumUp event sales and reconcile refunds in Pages & Peace admin. Verified customers are linked by email, and guests receive optional registration instructions in their booking confirmation. The release includes shared inventory, child/adult booking rules and transactional refund confirmations. See the [in-store sales specification](../../specs/2026-11-sumup-in-store-event-sales.md).
+
+## Released admin event reporting — 2026-11-27
+
+The sales summary and event-type ranking follow the trading year starting 1 November. The mobile chart pairs each of the latest 12 months with the same month a year earlier. Event types are ranked by net revenue, five per page. See the [release record](project-change-log.md#2026-11-27--sumup-ticketing-and-admin-reporting-production-release).

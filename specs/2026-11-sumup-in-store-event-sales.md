@@ -1,6 +1,6 @@
 # In-store SumUp event ticket sales
 
-**Status:** Feature branch for preview; not released. The owner approved the additive live schema migration for preview acceptance. Public release remains subject to separate approval.
+**Status:** Released to production on 27 November 2026 in [PR #55](https://github.com/mattymclauchlan84/pagesandpeacestore/pull/55), commit `56affdd`. The separately approved live migration was recorded as `20261127174304_sumup_in_store_event_sales`.
 
 ## Purpose
 In-store SumUp payments must be recorded as genuine event orders and confirmed bookings, deducted from shared event and ticket-option capacity, and reconciled in the same admin dashboard and reports as online orders without charging via Stripe.
@@ -31,7 +31,7 @@ Migration: supabase/migrations/20261127173500_sumup_in_store_event_sales.sql.
 
 ## Testing and release gates
 - Use an **isolated** PostgreSQL/Supabase instance and synthetic users/events for mutation tests. Do not test payments, bookings, refunds, emails or marketing subscription by writing to the sole live production database.
-- Preview booking, refund, confirmation-retry and guest-link writes are blocked. Local mutation tests require ALLOW_LOCAL_IN_STORE_TESTS=true, loopback-only Supabase and Resend endpoints and no VERCEL_ENV.
+- Preview booking, refund, confirmation-retry and guest-link writes are blocked by default. Local mutation tests require ALLOW_LOCAL_IN_STORE_TESTS=true, loopback-only Supabase and Resend endpoints and no VERCEL_ENV.
 - Test duplicate references, retry/idempotency, prices changing during recording, fully booked events, concurrent Stripe checkout and SumUp sale, ticket-option caps, mandatory child/adult pairs and rollback after error.
 - Test guest creation, existing customer match, one automatic booking confirmation for each purchaser, optional guest registration text in that email only, sign-up with verified same email and wrong-email non-linking, failure to deliver confirmation (sale remains recorded with explicit failed status), and that no marketing opt-in or Beehiiv subscription occurs from the till.
 - Test whole-order and mixed child/adult refunds under one SumUp refund reference, duplicates, partial refund, remaining capacity, reconciliation and no Stripe side effects.
@@ -49,4 +49,4 @@ The regression suite in `tests/sumup-postgres.test.mjs` runs the migration and 1
 2. Release the accepted code after the database check. Smoke-test dashboard, register, customer orders and attendance. Schedule the first real SumUp sale or refund only with operator approval, and reconcile its reference, quantity, report totals and email status. For prices that changed or a sale that cannot be entered because of capacity, reconcile the existing POS payment before promising a place. Only the operator can verify settlement in SumUp.
 3. If the feature needs to be paused, set `DISABLE_IN_STORE_WRITES=true` on the released application and redeploy it. This pauses SumUp writes, confirmation retries and claims while preserving source labels and history. Use a corrected compatible build for recovery. Leave the additive tables, foreign keys, procedures and nullable booking owner in place, and reconcile any in-flight POS payments from references before reopening. Do not remove the migration or restore a stale snapshot over new sales. If the migration fails before release, stop and validate the rolled-back schema before retrying.
 
-The Vercel preview is read-only for SumUp by default. The separately approved live database acceptance window requires the exact feature branch and a preview-only `IN_STORE_PREVIEW_PILOT` value containing the nominated admin Auth UUID and a short UTC expiry, separated by a comma. The nominated admin uses `TEST-` references and addresses they control. Test sales and refunds remain in the live audit records. The kill switch or expiry closes the preview exception. Continue to use isolated fixtures for routine mutation testing.
+The Vercel preview is read-only for SumUp by default. The separately approved live database acceptance window requires the exact feature branch and a preview-only `IN_STORE_PREVIEW_PILOT` value containing the nominated admin Auth UUID and a short UTC expiry, separated by a comma. The nominated admin uses `TEST-` references and addresses they control. The acceptance account was removed and its remaining seats released. Test sale and refund audit history was retained. The kill switch or expiry closes the preview exception. Continue to use isolated fixtures for routine mutation testing.

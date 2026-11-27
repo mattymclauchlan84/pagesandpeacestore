@@ -79,7 +79,7 @@ Read the [SumUp in-store sales specification](specs/2026-11-sumup-in-store-event
 - Use the existing event row lock and combined event/ticket capacity rules for a complete, atomic paid order, lines, bookings and unique POS reference. Check the SumUp amount against locked prices in the transaction. Count pending Stripe bookings until their existing lifecycle releases them. Replaying an identical SumUp reference must not reserve or release places again.
 - Match a customer only by verified email. An unclaimed guest order becomes associated with an account only after the verified owner signs in with the matching address.
 - Each recorded SumUp sale triggers one transactional confirmation email. Keep the original confirmation details and provider idempotency key across retries. Staff review a pending or failed confirmation in Resend after the retry window or following refunds. Guests may receive optional account-registration information in that same email, but no account is created automatically. No marketing preference or Beehiiv subscription may be set by staff at the till; customers choose via the existing /dashboard layout redirect to /onboarding/consent when marketing_consent_at is null, with Yes/No both leading to dashboard. Do not change OAuth callbacks for this or add duplicate signup-page consent controls. Retain staff identity and confirmation delivery audit status. Use actual date-only sales, never expose an invented POS payment time.
-- SumUp refunds are processed in the POS first. Record externally completed grouped ticket refunds atomically under one unique refund reference. Enforce child/adult booking integrity and do not show Stripe refund actions for POS orders.
+- SumUp refunds are processed in the POS first. Record externally completed grouped ticket refunds atomically under one unique refund reference. Enforce child/adult booking integrity and do not show Stripe refund actions for POS orders. Send the existing refund-confirmation template after the SumUp refund commits. An immediate email retry uses the original refund and provider key.
 - The sole active database remains production. Vercel previews must not write bookings, refunds, guest ownership or confirmations except during the explicitly approved SumUp acceptance window described in the specification. Use isolated SQL fixtures and a loopback mail provider in development. Obtain explicit approval for production migrations. Preserve the SumUp records and use the feature write switch if a release must be paused.
 
 ## Admin reporting query reliability
@@ -91,6 +91,12 @@ The 2026-11-27 incident and production fix are documented in [the project change
 - Preserve complete report results across batches; fail closed with a clear error rather than returning partially computed financial figures. Log sanitised error codes and batch numbers, not customer details or identifiers.
 - When adding a new large ID-list query, assess growth, pagination/batch boundaries, the risk of truncated result sets and query error handling; test with enough synthetic IDs to exercise multiple batches.
 - A 24-hour REST log audit covered observed requests, not every code path; repository-wide query audit and automated multi-batch regression coverage remain follow-up work.
+
+## Admin event sales reporting
+
+- The trading year starts on 1 November in Europe/London, based on the first trading day of 1 November 2025. Use the same year-to-date period for the sales totals and event-type ranking.
+- Group Stripe revenue by booking creation month and SumUp revenue by recorded sale date. Deduct refunds from the original sale month.
+- Keep the latest 12 months and the same months a year earlier visible in one mobile chart. Label the current month as in progress. Paginate ranked event types five at a time and calculate their shares from total year-to-date net event revenue across all pages.
 
 ## Quality
 For every slice, identify relevant lint/build/tests and execute what exists. Where automated coverage is absent, document the gap and use explicit manual acceptance checks. Do not claim checks were run when they were not.
