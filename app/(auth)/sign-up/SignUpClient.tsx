@@ -15,7 +15,7 @@ export default function SignUpClient() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState(() => searchParams.get("email")?.trim().toLowerCase() || "");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
