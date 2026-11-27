@@ -7,9 +7,17 @@ export const dynamic = "force-dynamic";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const marketingText = "Yes, I would like Pages & Peace to email me news about events, books and the café. I can unsubscribe at any time.";
-export async function GET() {
+export async function GET(request: Request) {
   if (!await requireAdminUser()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const db = appCoreDb();
+  const lookupEmail = new URL(request.url).searchParams.get("email")?.trim().toLowerCase() ?? "";
+  if (lookupEmail) {
+    if (!emailPattern.test(lookupEmail) || lookupEmail.length > 254) return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+    const { data: customer, error: lookupError } = await db.from("customers")
+      .select("auth_user_id").eq("email", lookupEmail).eq("email_verified", true).limit(1).maybeSingle();
+    if (lookupError) return NextResponse.json({ error: "Customer lookup unavailable" }, { status: 503 });
+    return NextResponse.json({ existingCustomer: Boolean(customer) });
+  }
   const { data: events, error } = await db.from("events")
     .select("id, title, starts_at, capacity, booking_rule")
     .eq("status", "published").gt("starts_at", new Date().toISOString())
