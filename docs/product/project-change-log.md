@@ -1,5 +1,9 @@
 # Project Change Log
 
+## 2026-11-27 — Admin event revenue comparison
+
+The dashboard shows the latest 12 sale months alongside the same months a year earlier. Each month is selectable for exact net revenue, with the latest month marked as in progress. A single responsive chart keeps all months visible, including on mobile. UK calendar boundaries are used, and refunds reduce revenue in the original sale month. Event series also show their share of total net event sales.
+
 ## 2026-11-27 — SumUp refund confirmation email
 
 The live acceptance test recorded and fully refunded an £18 SumUp order for two tickets. The booking confirmation was accepted by the mail provider. The order, both ticket lines and the refund audit reconciled, with both seats released. The SumUp preview now sends a refund confirmation using the existing Stripe refund template, with details from the committed SumUp refund. Replayed requests use the same provider key, and a failure to send leaves the refund recorded. Existing Stripe refund handling is unchanged.
