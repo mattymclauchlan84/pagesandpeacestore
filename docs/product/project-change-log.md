@@ -1,5 +1,9 @@
 # Project Change Log
 
+## 2026-11-27 — Trading-year event sales
+
+The admin event sales totals and event-type ranking use the current trading year from 1 November, matching the trading start on 1 November 2025. The ranking shows five event types per page. Percentages and bar lengths refer to the full trading-year ranking across pages. The monthly comparison still includes the previous year.
+
 ## 2026-11-27 — Admin event revenue comparison
 
 The dashboard shows the latest 12 sale months alongside the same months a year earlier. Each month is selectable for exact net revenue, with the latest month marked as in progress. A single responsive chart keeps all months visible, including on mobile. UK calendar boundaries are used, and refunds reduce revenue in the original sale month. Event series also show their share of total net event sales.
