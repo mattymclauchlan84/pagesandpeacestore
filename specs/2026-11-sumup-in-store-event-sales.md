@@ -7,9 +7,9 @@ In-store SumUp payments must be recorded as genuine event orders and confirmed b
 
 ## Sale workflow
 - The admin dashboard and individual event admin page include a "Record in-store sale" modal.
-- Staff choose an upcoming published event, active ticket options and quantities, then enter purchaser name/email, SumUp payment reference and original payment date/time.
+- Staff choose an upcoming published event, active ticket options and quantities, then enter purchaser name/email, SumUp payment reference and original sale date (no time required).
 - Admin-only email lookup identifies an already verified Pages & Peace customer. Matched verified profiles link immediately; other sales remain guests without creating fictitious Auth accounts.
-- Independent, unchecked options allow an invitation to create an account and explicit marketing opt-in. They are not requirements for purchase. The invitation asks customers to use the original email and verify ownership through the existing passwordless sign-up. Verified login associates unlinked bookings with the same email.
+- No invitation or marketing choices appear at the till. Each confirmed sale automatically sends one transactional booking-confirmation email showing the event, ticket quantities, total, SumUp reference and booking reference. For guests without a verified account this email also offers optional account registration using the same verified email; registration is not needed to attend. Marketing preferences are handled solely in the customer account/sign-up journey, not the in-store sale. Verified login associates unlinked bookings with that email.
 - Payment confirmation is explicit and manual: staff must verify settlement in SumUp before booking. A unique reference prevents duplicate entry.
 - A service-role-only database RPC checks prices and event/option shared capacity and required child/adult ticket pairs under the existing event lock, and creates the sale, order lines and confirmed bookings atomically.
 - Sales appear in revenue reports using the original payment date and on the attendance list/booking register marked as SumUp.
@@ -24,7 +24,7 @@ In-store SumUp payments must be recorded as genuine event orders and confirmed b
 ## Schema and security
 Migration: supabase/migrations/20261127173500_sumup_in_store_event_sales.sql.
 - Booking Auth user IDs become nullable for legitimate guest orders, retaining the FK for known users.
-- New app_core.in_store_sales stores one reference, payment time, purchaser, administrative provenance and invitation/marketing consent evidence.
+- New app_core.in_store_sales stores one reference, actual sale DATE, purchaser, administrator identity and booking confirmation delivery status. A synthetic London-noon timestamp preserves compatibility with existing order reports but must never be represented as the actual POS transaction time.
 - New app_core.in_store_refunds records each completed manual POS refund and all affected lines.
 - Service-role-only procedures: record_in_store_sale, record_in_store_refund and link_verified_in_store_bookings.
 - New tables have RLS enabled and no direct anon/authenticated access.
@@ -33,7 +33,7 @@ Migration: supabase/migrations/20261127173500_sumup_in_store_event_sales.sql.
 - Use an **isolated** PostgreSQL/Supabase instance and synthetic users/events for mutation tests. Do not test payments, bookings, refunds, emails or marketing subscription by writing to the sole live production database.
 - Preview mutation routes are blocked. Local tests require an explicit ALLOW_LOCAL_IN_STORE_TESTS=true and a localhost Supabase URL; otherwise routes are read-only.
 - Test duplicate references, retry/idempotency, prices changing during recording, fully booked events, concurrent Stripe checkout and SumUp sale, ticket-option caps, mandatory child/adult pairs and rollback after error.
-- Test guest creation, existing customer match, sign-up with verified same email, wrong-email non-linking, opted-in/out invitation, marketing consent evidence, and email/marketing delivery failures.
+- Test guest creation, existing customer match, one automatic booking confirmation for each purchaser, optional guest registration text in that email only, sign-up with verified same email and wrong-email non-linking, failure to deliver confirmation (sale remains recorded with explicit failed status), and that no marketing opt-in or Beehiiv subscription occurs from the till.
 - Test whole-order and mixed child/adult refunds under one SumUp refund reference, duplicates, partial refund, remaining capacity, reconciliation and no Stripe side effects.
 - Check admin reporting, customer dashboard, attendance, responsive layout and accessibility.
 - Require successful build, TypeScript and applicable lint; independent QA/security review; read-only preview acceptance and separate approval for production migration and release.
