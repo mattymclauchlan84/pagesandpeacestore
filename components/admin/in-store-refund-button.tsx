@@ -3,8 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Line = { id: string; name: string; unitAmountPence: number; remainingQuantity: number };
-type Props = { orderId: string; lines: Line[]; customerEmail: string; paymentReference: string; paidAt: string };
-export default function InStoreRefundButton({ orderId, lines, customerEmail, paymentReference, paidAt }: Props) {
+type Props = { orderId: string; lines: Line[]; customerEmail: string; paymentReference: string; saleDate: string };
+export default function InStoreRefundButton({ orderId, lines, customerEmail, paymentReference, saleDate }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -53,7 +53,7 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
         <p className="text-sm text-amber-900">First refund the customer in SumUp. Then record the completed transaction here. Capacity returns only after confirmation.</p>
         <div className="rounded-lg border bg-stone-50 p-3 text-sm">
           <p><strong>Customer email:</strong> {customerEmail || "—"}</p>
-          <p><strong>Original payment:</strong> {new Date(paidAt).toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "medium", timeStyle: "short" })}</p>
+          <p><strong>Date of sale:</strong> {saleDate}</p>
           <p className="break-all"><strong>Original SumUp reference:</strong> {paymentReference} <button type="button" onClick={() => navigator.clipboard.writeText(paymentReference)} className="ml-2 underline">Copy</button></p>
         </div>
         <div className="rounded-lg border p-3">
