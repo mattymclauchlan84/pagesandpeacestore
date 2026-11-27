@@ -20,12 +20,9 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerMatch, setCustomerMatch] = useState<"known" | "guest" | "checking" | null>(null);
   const [reference, setReference] = useState("");
-  const [paidAt, setPaidAt] = useState(() => {
-    const date = new Date();
-    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  });
-  const [invitation, setInvitation] = useState(false);
-  const [marketing, setMarketing] = useState(false);
+  const [saleDate, setSaleDate] = useState(() =>
+    new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+  );
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -67,7 +64,7 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
   const rule = event?.booking_rule;
   const missingGroup = !!rule && ((quantities[rule.child_ticket_id ?? ""] ?? 0) < 1 || (quantities[rule.adult_ticket_id ?? ""] ?? 0) < 1);
   const canSubmit = !loading && !busy && !!event && totalQuantity > 0 && !missingGroup && !!customerName.trim() && !!customerEmail.trim() &&
-    reference.trim().length >= 3 && !!paidAt && confirmed;
+    reference.trim().length >= 3 && !!saleDate && confirmed;
   function close() { if (!busy) { setOpen(false); setSuccess(""); setError(""); } }
 
   async function submit() {
@@ -81,16 +78,16 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
         body: JSON.stringify({
           eventId, items: selected.map((ticket) => ({ ticketTypeId: ticket.id, quantity: quantities[ticket.id] })),
           customerName: customerName.trim(), customerEmail: customerEmail.trim(),
-          sumupReference: reference.trim(), paidAt: new Date(paidAt).toISOString(),
-          expectedTotalPence: totalPence, sendInvitation: invitation, marketingConsent: marketing, confirmedPayment: confirmed,
+          sumupReference: reference.trim(), saleDate,
+          expectedTotalPence: totalPence, confirmedPayment: confirmed,
         }),
       });
       const result = await res.json().catch(() => null);
       if (!res.ok || !result?.success) throw new Error(result?.error ?? "Could not record sale");
       const message = "Sale recorded and " + totalQuantity + " place(s) reserved. " +
-        (result.invitation === "failed" ? "Account invitation failed; do not assume it was sent. " :
-        result.invitation === "sent" ? "Account invitation sent. " : "") +
-        (result.marketing === "failed" || result.marketing === "not_configured" ? "Marketing signup needs follow-up." : "");
+        (result.confirmation === "sent"
+          ? "Booking confirmation emailed to the customer."
+          : "Booking confirmation email could not be sent; please verify the address and arrange delivery.");
       setSuccess(message);
       setConfirmed(false);
       router.refresh();
@@ -113,7 +110,7 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
         {loading ? <p className="mt-6">Loading events…</p> : null}
         {success ? <div role="status" className="mt-5 rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-900">{success}
           <div className="mt-3 flex gap-2">
-            <button type="button" className="rounded-lg border px-3 py-2" onClick={() => { setSuccess(""); setReference(""); setQuantities({}); setCustomerName(""); setCustomerEmail(""); setCustomerMatch(null); setInvitation(false); setMarketing(false); }}>Record another</button>
+            <button type="button" className="rounded-lg border px-3 py-2" onClick={() => { setSuccess(""); setReference(""); setQuantities({}); setCustomerName(""); setCustomerEmail(""); setCustomerMatch(null); }}>Record another</button>
             <button type="button" className="rounded-lg bg-green-800 px-3 py-2 text-white" onClick={close}>Close</button>
           </div>
         </div> : <div className="mt-5 space-y-4">
@@ -141,21 +138,19 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
           <label className="block text-sm font-semibold">Customer email
             <input type="email" autoComplete="email" value={customerEmail} onChange={(e) => { setCustomerEmail(e.target.value); setCustomerMatch(null); }} onBlur={checkCustomer} className="mt-1 w-full rounded-lg border p-3" placeholder="customer@example.com"/>
           </label>
-          <p className="text-xs text-neutral-600">Staff prompt: “Can I take your email so we can attach your tickets to your booking?” Existing verified customers are matched automatically. New customers can attend as guests.</p>{customerMatch === "checking" ? <p className="text-xs text-neutral-600">Checking customer…</p> : customerMatch === "known" ? <p className="text-xs font-medium text-emerald-800">Existing verified account found. Tickets will be associated with this customer.</p> : customerMatch === "guest" ? <p className="text-xs font-medium text-amber-800">No verified account found. This will be a guest booking; offer an invitation.</p> : null}
+          <p className="text-xs text-neutral-600">Staff prompt: “Can I take your email so we can attach your tickets to your booking?” Existing verified customers are matched automatically. New customers can attend as guests.</p>{customerMatch === "checking" ? <p className="text-xs text-neutral-600">Checking customer…</p> : customerMatch === "known" ? <p className="text-xs font-medium text-emerald-800">Existing verified account found. Tickets will be associated with this customer.</p> : customerMatch === "guest" ? <p className="text-xs font-medium text-amber-800">No verified account found. Their confirmation email will include optional account registration.</p> : null}
           <label className="block text-sm font-semibold">SumUp transaction reference
             <input value={reference} onChange={(e) => setReference(e.target.value)} className="mt-1 w-full rounded-lg border p-3" placeholder="Reference from SumUp receipt"/>
           </label>
-          <label className="block text-sm font-semibold">Payment date and time (device local timezone)
-            <input type="datetime-local" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/>
+          <label className="block text-sm font-semibold">Date of SumUp sale (UK)
+            <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/>
           </label>
-          <div className="space-y-3 rounded-xl border bg-stone-50 p-4 text-sm">
-            <label className="flex items-start gap-2"><input type="checkbox" checked={invitation} onChange={(e) => setInvitation(e.target.checked)} className="mt-1"/>
-              <span>Customer agrees to an account invitation <span className="block text-xs text-neutral-600">“Would you like an email invitation so you can view your tickets online whenever you like?”</span></span>
-            </label>
-            <label className="flex items-start gap-2"><input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="mt-1"/>
-              <span>Customer expressly opts in to marketing <span className="block text-xs text-neutral-600">“Would you like emails about our events, books and café? It's optional, and you can unsubscribe anytime.”</span></span>
-            </label>
-          </div>
+          <p className="rounded-lg bg-stone-50 p-3 text-xs text-neutral-700">
+            Staff prompt: “We'll email your booking confirmation to this address. If you don't already have an account,
+            it will also include a link to register whenever you like, so you can view your bookings online.
+            Registration is optional — just bring your confirmation email to the event.”
+            Marketing preferences are chosen only during account registration.
+          </p>
           <label className="flex items-start gap-2 text-sm font-semibold"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1"/>
             I have verified the payment of {money(totalPence)} succeeded in the SumUp POS.
           </label>
