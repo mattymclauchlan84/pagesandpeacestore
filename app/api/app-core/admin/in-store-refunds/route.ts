@@ -11,24 +11,27 @@ export async function POST(request: Request) {
   let data: Record<string, unknown>;
   try { data = await request.json(); } catch { return NextResponse.json({ error: "Invalid request" }, { status: 400 }); }
   const orderId = typeof data.orderId === "string" ? data.orderId : "";
-  const orderLineId = typeof data.orderLineId === "string" ? data.orderLineId : "";
   const refundReference = typeof data.refundReference === "string" ? data.refundReference.trim() : "";
   const refundDate = typeof data.refundDate === "string" ? new Date(data.refundDate) : new Date(NaN);
-  const quantity = data.quantity;
+  const items = data.items;
+  const validItems = Array.isArray(items) && items.length > 0 && items.length <= 20 && items.every((item: unknown) => {
+    if (!item || typeof item !== "object") return false;
+    const value = item as { orderLineId?: unknown; quantity?: unknown };
+    return typeof value.orderLineId === "string" && uuid.test(value.orderLineId) && Number.isInteger(value.quantity) && Number(value.quantity) > 0 && Number(value.quantity) <= 30;
+  });
   const confirmed = data.confirmedExternalRefund === true;
   const reason = typeof data.reason === "string" ? data.reason.trim().slice(0, 400) : "";
-  if (!uuid.test(orderId) || !uuid.test(orderLineId) || !Number.isInteger(quantity) ||
-    Number(quantity) < 1 || refundReference.length < 3 || refundReference.length > 128 ||
+  if (!uuid.test(orderId) || !validItems || refundReference.length < 3 || refundReference.length > 128 ||
     !Number.isFinite(refundDate.getTime()) || !confirmed) {
     return NextResponse.json({ error: "Confirm the completed SumUp refund and enter its reference and date." }, { status: 400 });
   }
   const { data: amount, error } = await appCoreDb().rpc("record_in_store_refund", {
-    p_order_id: orderId, p_order_line_id: orderLineId, p_quantity: quantity,
+    p_order_id: orderId, p_items: items,
     p_sumup_refund_reference: refundReference, p_refund_date: refundDate.toISOString(),
     p_admin_id: admin.id, p_reason: reason,
   });
   if (error || amount == null) {
-    const known = ["ADULT_TICKET_REQUIRED", "INVALID_QUANTITY", "INVALID_REFUND", "SUMUP_ORDER_NOT_FOUND", "LINE_NOT_FOUND"];
+    const known = ["ADULT_TICKET_REQUIRED", "INVALID_QUANTITY", "INVALID_REFUND", "SUMUP_ORDER_NOT_FOUND", "LINE_NOT_FOUND", "INVALID_REFUND_DATE"];
     console.error("[in-store-refunds] Record failed", { code: error?.code });
     return NextResponse.json({ error: known.includes(error?.message ?? "") ? error?.message : "Unable to record SumUp refund. Check the reference and ticket quantity." }, { status: 409 });
   }
