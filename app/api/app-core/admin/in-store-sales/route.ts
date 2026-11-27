@@ -102,12 +102,12 @@ export async function POST(request: Request) {
   }
   const { data: orderId, error: saleError } = await db.rpc("record_in_store_sale", {
     p_event_id: eventId, p_items: items, p_customer_name: name, p_customer_email: email,
-    p_sumup_reference: reference, p_paid_at: paidAt.toISOString(), p_admin_id: admin.id,
+    p_sumup_reference: reference, p_paid_at: paidAt.toISOString(), p_expected_total_pence: body.expectedTotalPence, p_admin_id: admin.id,
     p_send_invitation: body.sendInvitation === true, p_marketing_consent: body.marketingConsent === true,
     p_marketing_text: body.marketingConsent === true ? marketingText : null,
   });
   if (saleError || !orderId) {
-    const known = ["DUPLICATE_SUMUP_REFERENCE", "NOT_ENOUGH_SEATS", "TICKET_UNAVAILABLE", "GROUP_TICKETS_REQUIRED", "EVENT_UNAVAILABLE"];
+    const known = ["DUPLICATE_SUMUP_REFERENCE", "NOT_ENOUGH_SEATS", "TICKET_UNAVAILABLE", "GROUP_TICKETS_REQUIRED", "EVENT_UNAVAILABLE", "PRICE_CHANGED"];
     console.error("[in-store-sales] Record failed", { code: saleError?.code });
     return NextResponse.json({ error: known.includes(saleError?.message ?? "") ? saleError?.message : "Unable to record sale; check reference and capacity." }, { status: 409 });
   }
