@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckCircle2, MailQuestion, RotateCcw, TriangleAlert } from "lucide-react";
 
+import { formatLondonDateTime } from "@/lib/time/london";
 import { getCustomerEventOrders } from "@/lib/app-core/event-orders";
 import { supabaseAuthServer } from "@/lib/supabase/server";
 
@@ -11,11 +12,11 @@ function money(pence: number) {
   return `£${(pence / 100).toFixed(2)}`;
 }
 
-function StatusIcon({ originalPayment, refunded }: { originalPayment: number; refunded: number }) {
-  if (originalPayment > 0 && refunded >= originalPayment) {
+function StatusIcon({ originalPayment, refunded, sumupRefundStatus }: { originalPayment: number; refunded: number; sumupRefundStatus?: string }) {
+  if (sumupRefundStatus ? sumupRefundStatus === "full" : originalPayment > 0 && refunded >= originalPayment) {
     return <span title="Fully refunded" aria-label="Fully refunded" className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-red-700"><RotateCcw className="h-4 w-4" aria-hidden="true" /></span>;
   }
-  if (refunded > 0) {
+  if (sumupRefundStatus ? sumupRefundStatus === "partial" : refunded > 0) {
     return <span title="Partially refunded" aria-label="Partially refunded" className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-800"><TriangleAlert className="h-4 w-4" aria-hidden="true" /></span>;
   }
   return <span title="Paid" aria-label="Paid" className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /></span>;
@@ -51,11 +52,11 @@ export default async function OrdersPage() {
 
                 return <tr key={order.id} className="border-t align-middle transition-colors hover:bg-[#189458]/5 focus-within:bg-[#189458]/5">
                   <td className="px-5"><Link href={href} className={linkClass}><p className="font-mono text-xs font-semibold">#{order.id.slice(0, 8)}</p></Link></td>
-                  <td className="px-5"><Link href={href} className={linkClass}>{new Date(order.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</Link></td>
+                  <td className="px-5"><Link href={href} className={linkClass}>{order.sumupSaleDate ? formatLondonDateTime(order.sumupSaleDate, { dateStyle: "medium" }) : new Date(order.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</Link></td>
                   <td className="px-5"><Link href={href} className={linkClass}><p className="font-medium">{order.lines.length} event item{order.lines.length === 1 ? "" : "s"}</p><p className="text-xs text-neutral-500">{activeTickets} active ticket{activeTickets === 1 ? "" : "s"}</p></Link></td>
                   <td className="px-5"><Link href={href} className={`${linkClass} font-semibold`}>{money(netPaid)}</Link></td>
                   <td className="px-5"><Link href={href} className={`${linkClass} ${refunded > 0 ? "text-red-700" : "text-neutral-400"}`}>{refunded > 0 ? money(refunded) : "—"}</Link></td>
-                  <td className="px-5"><Link href={href} className={linkClass}><StatusIcon originalPayment={originalPayment} refunded={refunded} /></Link></td>
+                  <td className="px-5"><Link href={href} className={linkClass}><StatusIcon originalPayment={originalPayment} refunded={refunded} sumupRefundStatus={order.sumupSaleDate ? order.refund_status : undefined} /></Link></td>
                   <td className="px-5 py-4 text-right">
                     <Link href={`/contact?order=${encodeURIComponent(order.id.slice(0, 8))}&topic=refund`} title={`Contact Pages & Peace about order ${order.id.slice(0, 8)}`} aria-label={`Contact Pages & Peace about order ${order.id.slice(0, 8)}`} className="inline-flex h-9 w-9 items-center justify-center rounded-full border text-neutral-700 transition-colors hover:border-[#189458] hover:bg-[#189458] hover:text-white">
                       <MailQuestion className="h-4 w-4" aria-hidden="true" />

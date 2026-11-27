@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isMissingInStoreTable } from "@/lib/app-core/in-store";
 import { appCoreDb } from "@/lib/app-core/service";
 
 export type EventAttendanceRow = {
@@ -41,31 +42,37 @@ export async function getEventAttendance(eventId: string): Promise<{
   const ticketTypeIds = [...new Set(confirmedBookings.map((booking) => booking.ticket_type_id))];
   const customerIds = [...new Set(confirmedBookings.map((booking) => booking.auth_user_id).filter((id): id is string => Boolean(id)))];
 
-  const [{ data: lines, error: linesError }, { data: ticketTypes, error: ticketTypesError }, { data: customers, error: customersError }] = await Promise.all([
-    lineIds.length ? db.from("order_lines").select("id, refunded_quantity, order_id").in("id", lineIds) : Promise.resolve({ data: [], error: null }),
-    ticketTypeIds.length ? db.from("ticket_types").select("id, name").in("id", ticketTypeIds) : Promise.resolve({ data: [], error: null }),
-    customerIds.length ? db.from("customers").select("auth_user_id, display_name, email").in("auth_user_id", customerIds) : Promise.resolve({ data: [], error: null }),
+  const perBatch = 100;
+  const chunks = (ids: string[]) => Array.from(
+    { length: Math.ceil(ids.length / perBatch) },
+    (_, index) => ids.slice(index * perBatch, (index + 1) * perBatch)
+  );
+  const [lineBatches, ticketBatches, customerBatches] = await Promise.all([
+    Promise.all(chunks(lineIds).map((ids) => db.from("order_lines").select("id, refunded_quantity, order_id").in("id", ids))),
+    Promise.all(chunks(ticketTypeIds).map((ids) => db.from("ticket_types").select("id, name").in("id", ids))),
+    Promise.all(chunks(customerIds).map((ids) => db.from("customers").select("auth_user_id, display_name, email").in("auth_user_id", ids))),
   ]);
-
-  if (linesError || ticketTypesError || customersError) {
+  if ([...lineBatches, ...ticketBatches, ...customerBatches].some(({ error }) => error)) {
     throw new Error("Unable to load attendance details");
   }
+  const lines = lineBatches.flatMap(({ data }) => data ?? []);
+  const ticketTypes = ticketBatches.flatMap(({ data }) => data ?? []);
+  const customers = customerBatches.flatMap(({ data }) => data ?? []);
 
-  const orderIds = [...new Set((lines ?? []).map((line) => line.order_id))];
-  const { data: inStoreSales, error: inStoreError } = orderIds.length
-    ? await db.from("in_store_sales").select("order_id").in("order_id", orderIds)
-    : { data: [], error: null };
-  // Until the additive migration is applied, existing online attendance
-  // continues to work rather than breaking the preview.
-  if (inStoreError && !["42P01", "PGRST205", "PGRST204"].includes(inStoreError.code)) {
-    throw new Error("Unable to load event sales channels");
+  const orderIds = [...new Set(lines.map((line) => line.order_id))];
+  const sumupOrders = new Set<string>();
+  for (const ids of chunks(orderIds)) {
+    const { data, error } = await db.from("in_store_sales").select("order_id").in("order_id", ids);
+    // Allow existing online attendance before the additive migration is installed.
+    if (error && isMissingInStoreTable(error.code) && ids[0] === orderIds[0]) break;
+    if (error) throw new Error("Unable to load event sales channels");
+    for (const sale of data ?? []) sumupOrders.add(sale.order_id);
   }
-  const sumupOrders = new Set((inStoreSales ?? []).map((sale) => sale.order_id));
-  const orderByLine = new Map((lines ?? []).map((line) => [line.id, line.order_id]));
+  const orderByLine = new Map(lines.map((line) => [line.id, line.order_id]));
 
-  const refundedByLine = new Map((lines ?? []).map((line) => [line.id, Number(line.refunded_quantity ?? 0)]));
-  const ticketById = new Map((ticketTypes ?? []).map((ticket) => [ticket.id, ticket.name]));
-  const customerById = new Map((customers ?? []).map((customer) => [customer.auth_user_id, customer]));
+  const refundedByLine = new Map(lines.map((line) => [line.id, Number(line.refunded_quantity ?? 0)]));
+  const ticketById = new Map(ticketTypes.map((ticket) => [ticket.id, ticket.name]));
+  const customerById = new Map(customers.map((customer) => [customer.auth_user_id, customer]));
 
   const rows = confirmedBookings.flatMap((booking): EventAttendanceRow[] => {
     const activeQuantity = Math.max(0, Number(booking.quantity) - (refundedByLine.get(booking.order_line_id) ?? 0));

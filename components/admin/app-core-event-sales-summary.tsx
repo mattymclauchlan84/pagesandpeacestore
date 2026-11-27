@@ -35,7 +35,8 @@ export default async function AppCoreEventSalesSummary() {
   const lines = orders.flatMap((order) => order.lines.map((line) => ({
     orderId: order.id,
     name: canonicalEventName(line.event?.series_name, line.event?.title, line.item_name),
-    createdAt: order.paid_at ?? order.created_at,
+    isSumUp: Boolean(order.sumupSaleDate),
+    saleMonth: order.sumupSaleDate?.slice(0, 7) ?? monthKey(new Date(order.created_at)),
     quantity: Number(line.quantity),
     refundedQuantity: Number(line.refunded_quantity ?? 0),
     grossPence: Number(line.quantity) * Number(line.unit_amount_pence),
@@ -46,6 +47,7 @@ export default async function AppCoreEventSalesSummary() {
   const netRevenue = (line: (typeof lines)[number]) => Math.max(0, line.grossPence - line.refundedPence);
 
   const revenue = lines.reduce((total, line) => total + netRevenue(line), 0);
+  const sumupRevenue = lines.filter((line) => line.isSumUp).reduce((total, line) => total + netRevenue(line), 0);
   const refunded = lines.reduce((total, line) => total + line.refundedPence, 0);
   const tickets = lines.reduce((total, line) => total + netQuantity(line), 0);
 
@@ -56,7 +58,7 @@ export default async function AppCoreEventSalesSummary() {
   const now = new Date();
   const currentMonth = monthKey(now);
   const thisMonthRevenue = lines
-    .filter((line) => monthKey(new Date(line.createdAt)) === currentMonth)
+    .filter((line) => line.saleMonth === currentMonth)
     .reduce((total, line) => total + netRevenue(line), 0);
 
   const byEvent = new Map<string, { name: string; revenue: number; tickets: number }>();
@@ -72,7 +74,7 @@ export default async function AppCoreEventSalesSummary() {
   const trend = Array.from({ length: 12 }, (_, offset) => {
     const date = new Date(now.getFullYear(), now.getMonth() - (11 - offset), 1);
     const key = monthKey(date);
-    const amount = lines.filter((line) => monthKey(new Date(line.createdAt)) === key).reduce((total, line) => total + netRevenue(line), 0);
+    const amount = lines.filter((line) => line.saleMonth === key).reduce((total, line) => total + netRevenue(line), 0);
     return { key, label: date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }), amount };
   });
   const maxMonthRevenue = Math.max(...trend.map((month) => month.amount), 1);
@@ -83,8 +85,9 @@ export default async function AppCoreEventSalesSummary() {
         <div><h2 className="text-2xl font-bold">Event sales</h2><p className="mt-1 text-sm text-emerald-900/70">All paid event sales in one view, net of partial and full refunds.</p></div>
         <Link href="/admin/events/bookings" className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white">View booking register & refunds</Link>
       </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <Metric label="Net event revenue" value={money(revenue)} />
+        <Metric label="Net in-store (SumUp)" value={money(sumupRevenue)} />
         <Metric label="Active paid orders" value={activeOrders.toLocaleString("en-GB")} />
         <Metric label="Net tickets sold" value={tickets.toLocaleString("en-GB")} />
         <Metric label="Revenue this month" value={money(thisMonthRevenue)} />

@@ -1,18 +1,17 @@
 "use client";
 import { useState } from "react";
+import { Dialog } from "radix-ui";
+import { parseLondonDateTimeInput, toLondonDateTimeInput } from "@/lib/time/london";
 import { useRouter } from "next/navigation";
 
 type Line = { id: string; name: string; unitAmountPence: number; remainingQuantity: number };
-type Props = { orderId: string; lines: Line[]; customerEmail: string; paymentReference: string; saleDate: string };
-export default function InStoreRefundButton({ orderId, lines, customerEmail, paymentReference, saleDate }: Props) {
+type Props = { orderId: string; lines: Line[]; customerEmail: string; paymentReference: string; saleDate: string; canRecord: boolean };
+export default function InStoreRefundButton({ orderId, lines, customerEmail, paymentReference, saleDate, canRecord }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [reference, setReference] = useState("");
-  const [refundDate, setRefundDate] = useState(() => {
-    const now = new Date();
-    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  });
+  const [refundDate, setRefundDate] = useState(() => toLondonDateTimeInput(new Date()));
   const [reason, setReason] = useState("Customer requested");
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -25,12 +24,13 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
     if (!canSave) return;
     setBusy(true); setError("");
     try {
+      const refundInstant = parseLondonDateTimeInput(refundDate);
       const response = await fetch("/api/app-core/admin/in-store-refunds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId, items: selected.map((line) => ({ orderLineId: line.id, quantity: quantities[line.id] })),
-          refundReference: reference.trim(), refundDate: new Date(refundDate).toISOString(),
+          refundReference: reference.trim(), refundDate: refundInstant.toISOString(),
           reason, confirmedExternalRefund: confirmed,
         }),
       });
@@ -40,18 +40,28 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to record refund"); }
     finally { setBusy(false); }
   }
-  return <>
-    <button type="button" disabled={!lines.some((line) => line.remainingQuantity > 0)}
-      onClick={() => { setQuantities({}); setReference(""); setConfirmed(false); setError(""); setOpen(true); }}
+  return <Dialog.Root open={open} onOpenChange={(nextOpen) => {
+    if (busy) return;
+    if (nextOpen) {
+      setQuantities({});
+      setReference("");
+      setRefundDate(toLondonDateTimeInput(new Date()));
+      setReason("Customer requested");
+      setConfirmed(false);
+      setError("");
+    }
+    setOpen(nextOpen);
+  }}>
+    <Dialog.Trigger disabled={!canRecord || !lines.some((line) => line.remainingQuantity > 0)}
       className="rounded-full border border-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-50 disabled:opacity-40">
       Record SumUp refund
-    </button>
-    {open ? <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-3">
-      <div role="dialog" aria-modal="true" aria-label="Record completed SumUp refund"
-        className="max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
-        <h2 className="text-xl font-semibold">Record SumUp refund</h2>
-        <p className="text-sm text-amber-900">First refund the customer in SumUp. Then record the completed transaction here. Capacity returns only after confirmation.</p>
-        <div className="rounded-lg border bg-stone-50 p-3 text-sm">
+    </Dialog.Trigger>
+    <Dialog.Portal>
+      <Dialog.Overlay className="fixed inset-0 z-[90] bg-black/60" />
+      <Dialog.Content className="fixed inset-x-3 top-1/2 z-[91] mx-auto max-h-[92dvh] max-w-lg -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+        <Dialog.Title className="text-xl font-semibold">Record SumUp refund</Dialog.Title>
+        <Dialog.Description className="text-sm text-amber-900">First refund the customer in SumUp. Then record the completed transaction here. Capacity returns only after confirmation.</Dialog.Description>
+        <div className="break-words rounded-lg border bg-stone-50 p-3 text-sm">
           <p><strong>Customer email:</strong> {customerEmail || "—"}</p>
           <p><strong>Date of sale:</strong> {saleDate}</p>
           <p className="break-all"><strong>Original SumUp reference:</strong> {paymentReference} <button type="button" onClick={() => navigator.clipboard.writeText(paymentReference)} className="ml-2 underline">Copy</button></p>
@@ -61,7 +71,7 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
           {lines.map((line) => <label key={line.id} className="mt-3 flex items-center justify-between gap-3 text-sm">
             <span>{line.name}<span className="block text-xs text-neutral-500">{line.remainingQuantity} active · £{(line.unitAmountPence / 100).toFixed(2)} each</span></span>
             <select value={quantities[line.id] ?? 0}
-              onChange={(e) => setQuantities((prev) => ({ ...prev, [line.id]: Number(e.target.value) }))}
+              onChange={(e) => { setQuantities((prev) => ({ ...prev, [line.id]: Number(e.target.value) })); setConfirmed(false); }}
               aria-label={"Refund quantity for " + line.name} className="rounded-lg border p-2">
               {Array.from({ length: line.remainingQuantity + 1 }, (_, i) => i).map((q) => <option key={q} value={q}>{q}</option>)}
             </select>
@@ -69,13 +79,13 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
         </div>
         <p className="font-semibold">Amount refunded in SumUp: £{(amount / 100).toFixed(2)}</p>
         <label className="block text-sm font-medium">SumUp refund reference
-          <input value={reference} onChange={(e) => setReference(e.target.value)} className="mt-1 w-full rounded-lg border p-3" placeholder="From completed SumUp refund"/>
+          <input value={reference} autoComplete="off" maxLength={128} onChange={(e) => { setReference(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded-lg border p-3" placeholder="From completed SumUp refund"/>
         </label>
-        <label className="block text-sm font-medium">SumUp refund date/time (device local timezone)
-          <input type="datetime-local" value={refundDate} onChange={(e) => setRefundDate(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/>
+        <label className="block text-sm font-medium">SumUp refund date and time (UK)
+          <input type="datetime-local" value={refundDate} onChange={(e) => { setRefundDate(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded-lg border p-3"/>
         </label>
         <label className="block text-sm font-medium">Reason
-          <input value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/>
+          <input value={reason} maxLength={400} onChange={(e) => setReason(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/>
         </label>
         <p className="text-xs text-amber-800">For events requiring adults to accompany children, an adult ticket must remain unless the remaining child tickets are also refunded.</p>
         <label className="flex items-start gap-2 text-sm font-semibold"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1"/>
@@ -88,7 +98,7 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
             {busy ? "Saving…" : "Confirm external refund"}
           </button>
         </div>
-      </div>
-    </div> : null}
-  </>;
+      </Dialog.Content>
+    </Dialog.Portal>
+  </Dialog.Root>;
 }

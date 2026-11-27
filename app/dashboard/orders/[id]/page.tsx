@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CheckCircle2, Mail, RotateCcw, TriangleAlert } from "lucide-react";
 
+import { formatLondonDateTime } from "@/lib/time/london";
 import { getCustomerEventOrders } from "@/lib/app-core/event-orders";
 import { supabaseAuthServer } from "@/lib/supabase/server";
 
@@ -43,7 +44,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold">Order #{order.id.slice(0, 8)}</h1>
-            <p className="mt-1 text-sm text-neutral-600">Placed {new Date(order.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</p>
+            <p className="mt-1 text-sm text-neutral-600">Placed {order.sumupSaleDate ? formatLondonDateTime(order.sumupSaleDate, { dateStyle: "medium" }) : new Date(order.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</p>
           </div>
           <StatusIcon refundStatus={order.refund_status} />
         </div>

@@ -1,15 +1,18 @@
 import "server-only";
 
+import { cache } from "react";
+import { inStoreWriteMode, isMissingInStoreTable } from "@/lib/app-core/in-store";
 import { appCoreDb } from "@/lib/app-core/service";
 
-type OrderRow = { id: string; auth_user_id: string | null; status: string; total_pence: number; currency: string; created_at: string; paid_at: string | null; refund_status: string; refunded_total_pence: number; customer_name: string | null; customer_email: string | null };
+type OrderRow = { id: string; auth_user_id: string | null; status: string; total_pence: number; currency: string; created_at: string; refund_status: string; refunded_total_pence: number };
 type LineRow = { id: string; order_id: string; item_type: string; item_name: string; quantity: number; unit_amount_pence: number; ticket_type_id: string | null; refunded_quantity: number; refunded_amount_pence: number };
-type BookingRow = { id: string; order_line_id: string; event_id: string; ticket_type_id: string; auth_user_id: string; quantity: number; status: string; created_at: string };
+type BookingRow = { id: string; order_line_id: string; event_id: string; ticket_type_id: string; auth_user_id: string | null; quantity: number; status: string; created_at: string };
 type EventRow = { id: string; slug: string; title: string; series_name: string | null; starts_at: string };
 type TicketRow = { id: string; name: string };
 type CustomerRow = { auth_user_id: string; email: string; display_name: string | null };
 
 export type EventOrder = OrderRow & {
+  sumupSaleDate: string | null;
   lines: Array<LineRow & { booking?: BookingRow; event?: EventRow; ticket?: TicketRow }>;
 };
 
@@ -17,7 +20,7 @@ async function loadEventOrders(authUserId?: string) {
   const db = appCoreDb();
   let query = db
     .from("orders")
-    .select("id, auth_user_id, status, total_pence, currency, created_at, paid_at, refund_status, refunded_total_pence, customer_name, customer_email")
+    .select("id, auth_user_id, status, total_pence, currency, created_at, refund_status, refunded_total_pence")
     .in("status", ["paid", "partially_refunded", "refunded"]);
   if (authUserId) query = query.eq("auth_user_id", authUserId);
   const { data: orders, error } = await query.order("created_at", { ascending: false }).limit(2000);
@@ -114,6 +117,19 @@ async function loadEventOrders(authUserId?: string) {
     customers.push(...((data ?? []) as CustomerRow[]));
   }
 
+  const saleDates = new Map<string, string>();
+  const reportOrderIds = [...eventOrderIds];
+  for (let start = 0; start < reportOrderIds.length; start += lookupBatchSize) {
+    const { data, error: salesError } = await db.from("in_store_sales").select("order_id, sale_date")
+      .in("order_id", reportOrderIds.slice(start, start + lookupBatchSize));
+    if (salesError) {
+      if (start === 0 && isMissingInStoreTable(salesError.code)) break;
+      console.error("[event-orders] Sale date batch failed", { code: salesError.code });
+      throw new Error("Could not load in-store sale dates");
+    }
+    for (const sale of data ?? []) saleDates.set(sale.order_id, sale.sale_date);
+  }
+
   const bookingsByLine = new Map(typedBookings.map((booking) => [booking.order_line_id, booking]));
   const eventsById = new Map(events.map((event) => [event.id, event]));
   const ticketsById = new Map(tickets.map((ticket) => [ticket.id, ticket]));
@@ -122,6 +138,7 @@ async function loadEventOrders(authUserId?: string) {
   return {
     orders: eventOrders.map((order) => ({
       ...order,
+      sumupSaleDate: saleDates.get(order.id) ?? null,
       lines: typedLines.filter((line) => line.order_id === order.id).map((line) => {
         const booking = bookingsByLine.get(line.id);
         return { ...line, booking, event: booking ? eventsById.get(booking.event_id) : undefined, ticket: booking ? ticketsById.get(booking.ticket_type_id) : undefined };
@@ -131,10 +148,15 @@ async function loadEventOrders(authUserId?: string) {
   };
 }
 
-export async function getCustomerEventOrders(authUserId: string) {
-  const result = await loadEventOrders(authUserId);
-  return result.orders;
-}
+export const getCustomerEventOrders = cache(async (authUserId: string) => {
+  if (inStoreWriteMode()) {
+    const { error } = await appCoreDb().rpc("link_verified_in_store_bookings", { p_auth_user_id: authUserId });
+    if (error && error.code !== "PGRST202" && error.code !== "42883") {
+      console.error("[event-orders] Guest booking link failed", { code: error.code });
+    }
+  }
+  return (await loadEventOrders(authUserId)).orders;
+});
 
 export async function getAdminEventOrders() {
   return loadEventOrders();

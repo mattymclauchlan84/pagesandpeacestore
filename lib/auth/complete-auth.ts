@@ -96,15 +96,5 @@ export async function completeAuthenticatedUser(user: User, options: CompleteAut
     if (error) return { ok: false as const, reason: "profile_update" };
   }
 
-  // Associate unlinked in-store tickets only after a verified sign-in.
-  // Before the additive migration is deployed this RPC does not exist: do not
-  // prevent ordinary account login during the release transition.
-  if (user.email_confirmed_at) {
-    const { error: linkError } = await db.rpc("link_verified_in_store_bookings", { p_auth_user_id: user.id });
-    if (linkError && linkError.code !== "PGRST202" && linkError.code !== "42883") {
-      console.error("[auth] Guest-booking link failed", { code: linkError.code });
-    }
-  }
-
   return { ok: true as const, created };
 }
