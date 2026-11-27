@@ -79,7 +79,7 @@ export async function getEventAttendance(eventId: string): Promise<{
       ticketType: ticketById.get(booking.ticket_type_id) || "Ticket",
       activeQuantity,
       bookingStatus: "confirmed",
-      salesChannel: sumupOrders.has(orderByLine.get(booking.order_line_id)) ? "sumup" : "online",
+      salesChannel: sumupOrders.has(orderByLine.get(booking.order_line_id) ?? "") ? "sumup" : "online",
     }];
   }).sort((a, b) => a.customerName.localeCompare(b.customerName));
 
