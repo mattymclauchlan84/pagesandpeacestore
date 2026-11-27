@@ -47,7 +47,7 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
 
   async function checkCustomer() {
     const email = customerEmail.trim().toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
     setCustomerMatch("checking");
     try {
       const response = await fetch("/api/app-core/admin/in-store-sales?email=" + encodeURIComponent(email), { cache: "no-store" });
