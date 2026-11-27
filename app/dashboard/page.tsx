@@ -22,7 +22,7 @@ export default async function DashboardPage() {
       .select("display_name,marketing_consent,marketing_consent_at")
       .eq("auth_user_id", user.id)
       .maybeSingle(),
-    getCustomerEventOrders(user.id),
+    getCustomerEventOrders(user.id, user.email_confirmed_at ? user.email : null),
   ]);
 
   const showMarketingConsent = profile?.marketing_consent_at == null;

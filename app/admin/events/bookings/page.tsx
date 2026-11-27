@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import EventOrdersTable from "@/components/admin/event-orders-table";
 import Pagination from "@/components/admin/Pagination";
 import { getAdminEventOrders } from "@/lib/app-core/event-orders";
+import { inStoreWriteMode, isMissingInStoreTable, isPreviewPilotSale } from "@/lib/app-core/in-store";
+import type { InStoreConfirmationStatus } from "@/lib/app-core/in-store-confirmation";
+import { appCoreDb } from "@/lib/app-core/service";
 import { requireAdminUser } from "@/lib/auth/require-admin-user";
 
 export const dynamic = "force-dynamic";
@@ -22,16 +25,40 @@ export default async function AdminEventBookingsPage({ searchParams }: { searchP
   const safePage = Math.min(page, totalPages);
   const pagedOrders = orders.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  const { data: inStoreSales, error: sumupError } = pagedOrders.length
+    ? await appCoreDb().from("in_store_sales")
+      .select("order_id, sumup_reference, sale_date, customer_name, customer_email, confirmation_status, confirmation_started_at, created_by_auth_user_id")
+      .in("order_id", pagedOrders.map((order) => order.id))
+    : { data: [], error: null };
+  // The migration must be deployed before this feature can record a sale.
+  // An unavailable table during preview must not break the Stripe register.
+  if (sumupError && !isMissingInStoreTable(sumupError.code)) {
+    throw new Error("Could not load in-store sales");
+  }
+  const sumupByOrder = new Map((inStoreSales ?? []).map((sale) => [sale.order_id, sale]));
+
+  const mode = inStoreWriteMode(admin.id);
+  const confirmationCutoff = new Date().getTime() - 23 * 60 * 60 * 1000;
   const groupedOrders = pagedOrders.map((order) => {
     const customer = order.auth_user_id ? customers.get(order.auth_user_id) : undefined;
+    const inStoreSale = sumupByOrder.get(order.id);
+    const needsReview = inStoreSale?.confirmation_status !== "sent" &&
+      (order.refund_status === "partial" || order.refund_status === "full" ||
+        (inStoreSale?.confirmation_started_at && Date.parse(inStoreSale.confirmation_started_at) <= confirmationCutoff));
     return {
       id: order.id,
       created_at: order.created_at,
       total_pence: Number(order.total_pence),
       refunded_total_pence: Number(order.refunded_total_pence ?? 0),
       refund_status: order.refund_status ?? "none",
-      customerName: customer?.display_name ?? "Customer",
-      customerEmail: customer?.email ?? "",
+      customerName: inStoreSale?.customer_name ?? customer?.display_name ?? "Customer",
+      customerEmail: inStoreSale?.customer_email ?? customer?.email ?? "",
+      sumup: inStoreSale ? {
+        reference: inStoreSale.sumup_reference,
+        canRecord: Boolean(mode) && (mode !== "preview-pilot" || isPreviewPilotSale(inStoreSale, admin.id)),
+        saleDate: inStoreSale.sale_date,
+        confirmation: (needsReview ? "review" : inStoreSale.confirmation_status) as InStoreConfirmationStatus,
+      } : null,
       lines: order.lines.map((line) => ({
         id: line.id,
         item_name: line.item_name,
@@ -56,7 +83,7 @@ export default async function AdminEventBookingsPage({ searchParams }: { searchP
         </p>
 
         <div className="mt-8 overflow-hidden rounded-2xl border bg-white">
-          <EventOrdersTable orders={groupedOrders} />
+          <EventOrdersTable orders={groupedOrders} previewPilot={mode === "preview-pilot"} />
           <Pagination page={safePage} totalPages={totalPages} basePath="/admin/events/bookings" />
         </div>
 

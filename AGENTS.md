@@ -46,7 +46,7 @@ Do not modify production data, production configuration, authentication/authoriz
 
 Destructive database changes, material auth/security changes, production-data operations, external transfers of customer data and consequential automation require explicit human approval plus a rollback/recovery plan.
 
-Production Supabase project `pigyhsjzcoofaajguzhr` is the sole active database. The former staging project `ehbzvkynjcrewlzjgtkq` was deleted. A Vercel preview pointed at production Supabase is for read-only checks. Use an isolated database with synthetic data and Stripe Sandbox for tests that create bookings, payments, refunds, emails or admin changes.
+Production Supabase project `pigyhsjzcoofaajguzhr` is the sole active database. The former staging project `ehbzvkynjcrewlzjgtkq` was deleted. A Vercel preview pointed at production Supabase is for read-only checks by default. An owner-approved, individually scoped and expiring SumUp acceptance window is documented in the SumUp specification. Use an isolated database with synthetic data and Stripe Sandbox for tests that create bookings, payments, refunds, emails or admin changes.
 
 ## High-consequence actions
 Keep human approval for payments/refunds, customer communications, deletion, contracts, staff decisions, security permissions and production migrations. AI-generated code is not presumed correct.
@@ -70,6 +70,17 @@ Read the [ticket options](specs/2026-11-event-ticket-options.md) and [child and 
 - Keep the child and accompanying adult rule opt-in per event. When enabled, require both active ticket types for that event before reserving seats. Each ticket uses one place.
 - Process ticket refunds through Pages & Peace admin so amounts, ticket quantities, availability, order history and emails stay in sync. For grouped bookings, check that children who still attend have an adult ticket before issuing a partial refund. Check the Stripe refund status independently when settlement is in doubt. The current admin can treat a pending Stripe refund as complete.
 - Verify customer ticket quantities, shared capacity, Stripe confirmation, partial and remaining refunds, and notification delivery for applicable changes. Record live verification separately from isolated tests and exclude customer details and Stripe identifiers.
+
+## In-store SumUp event booking safety
+
+Read the [SumUp in-store sales specification](specs/2026-11-sumup-in-store-event-sales.md) before modifying POS ticket recording, guest booking identities or external refund reconciliation.
+
+- A SumUp ticket sale is an already settled payment recorded by an authorised admin, never a Stripe checkout. Do not invent or create unverified Supabase Auth users to represent guests.
+- Use the existing event row lock and combined event/ticket capacity rules for a complete, atomic paid order, lines, bookings and unique POS reference. Check the SumUp amount against locked prices in the transaction. Count pending Stripe bookings until their existing lifecycle releases them. Replaying an identical SumUp reference must not reserve or release places again.
+- Match a customer only by verified email. An unclaimed guest order becomes associated with an account only after the verified owner signs in with the matching address.
+- Each recorded SumUp sale triggers one transactional confirmation email. Keep the original confirmation details and provider idempotency key across retries. Staff review a pending or failed confirmation in Resend after the retry window or following refunds. Guests may receive optional account-registration information in that same email, but no account is created automatically. No marketing preference or Beehiiv subscription may be set by staff at the till; customers choose via the existing /dashboard layout redirect to /onboarding/consent when marketing_consent_at is null, with Yes/No both leading to dashboard. Do not change OAuth callbacks for this or add duplicate signup-page consent controls. Retain staff identity and confirmation delivery audit status. Use actual date-only sales, never expose an invented POS payment time.
+- SumUp refunds are processed in the POS first. Record externally completed grouped ticket refunds atomically under one unique refund reference. Enforce child/adult booking integrity and do not show Stripe refund actions for POS orders.
+- The sole active database remains production. Vercel previews must not write bookings, refunds, guest ownership or confirmations except during the explicitly approved SumUp acceptance window described in the specification. Use isolated SQL fixtures and a loopback mail provider in development. Obtain explicit approval for production migrations. Preserve the SumUp records and use the feature write switch if a release must be paused.
 
 ## Admin reporting query reliability
 

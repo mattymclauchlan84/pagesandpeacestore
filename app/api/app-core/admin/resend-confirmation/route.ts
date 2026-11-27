@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { appCoreDb } from "@/lib/app-core/service";
+import { isMissingInStoreTable } from "@/lib/app-core/in-store";
 import { requireAdminUser } from "@/lib/auth/require-admin-user";
 import { sendAppCoreBookingConfirmation } from "@/lib/app-core/email";
 
@@ -17,6 +19,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    const { data: sumup, error } = await appCoreDb().from("in_store_sales")
+      .select("order_id").eq("order_id", orderId).maybeSingle();
+    if (error && !isMissingInStoreTable(error.code)) throw new Error("Order channel unavailable");
+    if (sumup) return NextResponse.redirect(new URL("/admin/events/bookings", request.url), 303);
     await sendAppCoreBookingConfirmation(orderId);
     return NextResponse.redirect(new URL(`/admin/diagnostics/email?order_id=${orderId}&sent=1`, request.url), 303);
   } catch (error) {

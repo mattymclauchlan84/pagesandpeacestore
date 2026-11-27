@@ -46,8 +46,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     role: "admin" as const,
   };
 
-  return <div className="min-h-dvh flex bg-[#FAF6F1]">
+  return <div className="min-h-dvh bg-[#FAF6F1] lg:flex">
     <AdminSidebar user={user} profile={profile} />
-    <main className="flex-1 ml-64 p-10">{children}</main>
+    <main className="min-w-0 flex-1 p-4 sm:p-6 lg:ml-64 lg:p-10">{children}</main>
   </div>;
 }

@@ -15,7 +15,7 @@ export default async function DashboardEventsPage() {
   const { data: { user } } = await auth.auth.getUser();
   if (!user) redirect("/sign-in?callbackURL=/dashboard/events");
 
-  const orders = await getCustomerEventOrders(user.id);
+  const orders = await getCustomerEventOrders(user.id, user.email_confirmed_at ? user.email : null);
   const now = new Date();
   const upcoming = orders.flatMap((order) => order.lines.map((line) => ({ line, orderId: order.id })))
     .filter(({ line }) => line.event && new Date(line.event.starts_at) >= now && Number(line.quantity) - Number(line.refunded_quantity ?? 0) > 0)
