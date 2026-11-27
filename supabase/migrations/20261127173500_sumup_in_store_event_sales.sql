@@ -212,7 +212,7 @@ grant execute on function app_core.record_in_store_sale(uuid,jsonb,text,text,tex
 create or replace function app_core.link_verified_in_store_bookings(p_auth_user_id uuid)
 returns integer
 language plpgsql security invoker set search_path to ''
-as $
+as $$
 declare
   v_email text;
   v_count integer;
@@ -229,7 +229,7 @@ begin
     where b.order_line_id=l.id and b.auth_user_id is null and lower(s.customer_email)=v_email;
   return v_count;
 end;
-$;
+$$;
 revoke all on function app_core.link_verified_in_store_bookings(uuid) from public,anon,authenticated;
 grant execute on function app_core.link_verified_in_store_bookings(uuid) to service_role;
 
