@@ -145,7 +145,7 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
           <label className="block text-sm font-semibold">SumUp transaction reference
             <input value={reference} onChange={(e) => setReference(e.target.value)} className="mt-1 w-full rounded-lg border p-3" placeholder="Reference from SumUp receipt"/>
           </label>
-          <label className="block text-sm font-semibold">Payment date and time (local)
+          <label className="block text-sm font-semibold">Payment date and time (device local timezone)
             <input type="datetime-local" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="mt-1 w-full rounded-lg border p-3"/>
           </label>
           <div className="space-y-3 rounded-xl border bg-stone-50 p-4 text-sm">
