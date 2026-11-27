@@ -172,8 +172,11 @@ begin
   if v_total<>p_expected_total_pence then raise exception 'PRICE_CHANGED' using errcode='22023'; end if;
 
   -- Associate only an already verified email. Guests remain unlinked until verification.
-  select c.auth_user_id into v_user_id from app_core.customers c
-    where lower(c.email)=v_email and c.email_verified=true limit 1;
+  select c.auth_user_id into v_user_id
+    from app_core.customers c join auth.users u on u.id=c.auth_user_id
+    where lower(c.email)=v_email and c.email_verified=true
+      and lower(u.email)=v_email and u.email_confirmed_at is not null
+    limit 1;
 
   insert into app_core.orders
     (auth_user_id,status,total_pence,currency,paid_at,customer_name,customer_email)
