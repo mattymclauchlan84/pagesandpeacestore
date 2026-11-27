@@ -22,6 +22,9 @@ create table app_core.in_store_sales (
   created_at timestamptz not null default now(),
   invitation_sent_at timestamptz,
   invitation_error text,
+  marketing_subscription_status text not null default 'not_requested'
+    check (marketing_subscription_status in ('not_requested','pending','subscribed','failed','not_configured')),
+  marketing_subscribed_at timestamptz,
   constraint store_marketing_evidence check (
     marketing_consent = false or (marketing_consent_at is not null and marketing_consent_text is not null)
   )
