@@ -36,55 +36,75 @@ export async function GET(request: Request) {
 }
 type SaleBody = {
   eventId?: unknown; items?: unknown; customerName?: unknown; customerEmail?: unknown;
-  sumupReference?: unknown; paidAt?: unknown; expectedTotalPence?: unknown;
-  sendInvitation?: unknown; marketingConsent?: unknown; confirmedPayment?: unknown;
+  sumupReference?: unknown; saleDate?: unknown; expectedTotalPence?: unknown;
+  confirmedPayment?: unknown;
 };
-async function sendInvitation(email: string, name: string) {
+
+function formatEventDate(value: string) {
+  return new Date(value).toLocaleString("en-GB", {
+    timeZone: "Europe/London", weekday: "long", day: "numeric",
+    month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+async function sendBookingConfirmation(args: {
+  orderId: string; email: string; name: string; reference: string;
+  eventName: string; startsAt: string; saleDate: string; totalPence: number;
+  tickets: Array<{ name: string; quantity: number }>; offerRegistration: boolean;
+}) {
   if (!process.env.RESEND_API_KEY) throw new Error("Email service unavailable");
-  const url = new URL("https://pagesandpeace.co.uk/sign-up");
+  const lines = [
+    "Hello " + args.name + ",", "",
+    "Your Pages & Peace in-store event booking is confirmed.",
+    "",
+    "Event: " + args.eventName,
+    "When: " + formatEventDate(args.startsAt) + " (UK time)",
+    "Tickets:",
+    ...args.tickets.map((ticket) => " - " + ticket.name + " x " + ticket.quantity),
+    "Total paid: £" + (args.totalPence / 100).toFixed(2),
+    "Date of sale: " + args.saleDate,
+    "Booking reference: " + args.orderId.slice(0, 8).toUpperCase(),
+    "SumUp purchase reference: " + args.reference,
+    "",
+    "Please keep this email and show it at the event. You do not need an online account to attend.",
+  ];
+  if (args.offerRegistration) lines.push(
+    "",
+    "Optional: create a Pages & Peace account to view your event bookings online:",
+    "https://pagesandpeace.co.uk/sign-up",
+    "Sign up using this same email address, then verify it using the secure link we send you.",
+    "Creating an account is optional. You can choose your marketing preferences during sign-up."
+  );
+  lines.push("", "We look forward to seeing you!", "Pages & Peace");
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
-    from: "Pages & Peace <admin@pagesandpeace.co.uk>", to: email,
-    subject: "Your Pages & Peace account invitation",
-    text: [
-      "Hello " + name + ",", "", "Thank you for booking an event in our shop.",
-      "If you would like to view your tickets online, create your account whenever you are ready:",
-      url.toString(), "",
-      "Please sign up with the same email address used for your in-store booking.",
-      "You will verify your email with a secure sign-in link.",
-      "There is no need to create an account to attend your event.", "Pages & Peace",
-    ].join("\n"),
-  });
-  if (error) throw new Error("Invitation delivery failed");
+    from: "Pages & Peace <admin@pagesandpeace.co.uk>",
+    to: args.email,
+    subject: "Your Pages & Peace event booking confirmation",
+    text: lines.join("\n"),
+  }, { idempotencyKey: "in-store-booking-confirmation/" + args.orderId });
+  if (error) throw new Error("Confirmation delivery failed");
 }
-async function subscribeMarketing(email: string) {
-  const publicationId = process.env.BEEHIIV_PUBLICATION_ID;
-  const apiKey = process.env.BEEHIIV_API_KEY;
-  if (!publicationId || !apiKey) return "not_configured" as const;
-  try {
-    const response = await fetch("https://api.beehiiv.com/v2/publications/" + publicationId + "/subscriptions", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ email, reactivate_existing: true, send_welcome_email: true }),
-    });
-    return response.ok ? "subscribed" as const : "failed" as const;
-  } catch {
-    return "failed" as const;
-  }
-}
+
 export async function POST(request: Request) {
   const admin = await requireAdminUser();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const localUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
-  const isolatedTest = process.env.ALLOW_LOCAL_IN_STORE_TESTS === "true" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(localUrl);
-  if (process.env.VERCEL_ENV !== "production" && !isolatedTest) return NextResponse.json({ error: "Non-production mode is read-only. Use an isolated local database for tests." }, { status: 403 });
+  const isolatedTest = process.env.ALLOW_LOCAL_IN_STORE_TESTS === "true" &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(localUrl);
+  if (process.env.VERCEL_ENV !== "production" && !isolatedTest) {
+    return NextResponse.json({ error: "Preview is read-only; bookings require isolated local testing." }, { status: 403 });
+  }
   let body: SaleBody;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid request" }, { status: 400 }); }
   const eventId = typeof body.eventId === "string" ? body.eventId : "";
   const name = typeof body.customerName === "string" ? body.customerName.trim() : "";
   const email = typeof body.customerEmail === "string" ? body.customerEmail.trim().toLowerCase() : "";
   const reference = typeof body.sumupReference === "string" ? body.sumupReference.trim() : "";
-  const paidAt = typeof body.paidAt === "string" ? new Date(body.paidAt) : new Date(NaN);
+  const saleDate = typeof body.saleDate === "string" ? body.saleDate : "";
+  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(saleDate) &&
+    !Number.isNaN(new Date(saleDate + "T12:00:00Z").getTime()) &&
+    new Date(saleDate + "T12:00:00Z").toISOString().slice(0, 10) === saleDate;
   const validItems = Array.isArray(body.items) && body.items.length > 0 && body.items.length <= 20 &&
     body.items.every((item: unknown) => {
       if (!item || typeof item !== "object") return false;
@@ -93,57 +113,70 @@ export async function POST(request: Request) {
         Number.isInteger(candidate.quantity) && Number(candidate.quantity) >= 1 && Number(candidate.quantity) <= 10;
     });
   if (!uuid.test(eventId) || !name || name.length > 120 || !emailPattern.test(email) || email.length > 254 ||
-    reference.length < 3 || reference.length > 128 || !Number.isFinite(paidAt.getTime()) ||
+    reference.length < 3 || reference.length > 128 || !validDate ||
     !validItems || body.confirmedPayment !== true ||
     !Number.isInteger(body.expectedTotalPence) || Number(body.expectedTotalPence) < 0) {
     return NextResponse.json({ error: "Complete all fields and confirm SumUp payment." }, { status: 400 });
   }
+
   const db = appCoreDb();
-  const { data: tickets, error: lookupError } = await db.from("ticket_types")
-    .select("id, event_id, price_pence").eq("event_id", eventId).eq("is_active", true);
-  if (lookupError) return NextResponse.json({ error: "Unable to verify ticket prices" }, { status: 503 });
-  const prices = new Map((tickets ?? []).map((t) => [t.id, t.price_pence]));
+  const [{ data: event, error: eventError }, { data: ticketData, error: lookupError }] = await Promise.all([
+    db.from("events").select("id,title,starts_at").eq("id", eventId).single(),
+    db.from("ticket_types").select("id,event_id,name,price_pence").eq("event_id", eventId).eq("is_active", true),
+  ]);
+  if (lookupError || eventError || !event) {
+    return NextResponse.json({ error: "Unable to verify event and ticket details" }, { status: 503 });
+  }
+  const tickets = new Map((ticketData ?? []).map((ticket) => [ticket.id, ticket]));
   const items = body.items as Array<{ ticketTypeId: string; quantity: number }>;
-  const total = items.reduce((sum, item) => sum + (prices.get(item.ticketTypeId) ?? 0) * item.quantity, 0);
-  if (items.some((item) => !prices.has(item.ticketTypeId)) || total !== body.expectedTotalPence) {
+  const total = items.reduce((sum, item) => sum + (tickets.get(item.ticketTypeId)?.price_pence ?? 0) * item.quantity, 0);
+  if (items.some((item) => !tickets.has(item.ticketTypeId)) || total !== body.expectedTotalPence) {
     return NextResponse.json({ error: "Ticket prices changed. Refresh before recording payment." }, { status: 409 });
   }
+
   const { data: orderId, error: saleError } = await db.rpc("record_in_store_sale", {
     p_event_id: eventId, p_items: items, p_customer_name: name, p_customer_email: email,
-    p_sumup_reference: reference, p_paid_at: paidAt.toISOString(), p_expected_total_pence: body.expectedTotalPence, p_admin_id: admin.id,
-    p_send_invitation: body.sendInvitation === true, p_marketing_consent: body.marketingConsent === true,
-    p_marketing_text: body.marketingConsent === true ? marketingText : null,
+    p_sumup_reference: reference, p_sale_date: saleDate,
+    p_expected_total_pence: body.expectedTotalPence, p_admin_id: admin.id,
   });
   if (saleError || !orderId) {
-    const known = ["DUPLICATE_SUMUP_REFERENCE", "NOT_ENOUGH_SEATS", "TICKET_UNAVAILABLE", "GROUP_TICKETS_REQUIRED", "EVENT_UNAVAILABLE", "PRICE_CHANGED"];
+    const known = ["DUPLICATE_SUMUP_REFERENCE", "NOT_ENOUGH_SEATS", "TICKET_UNAVAILABLE",
+      "GROUP_TICKETS_REQUIRED", "EVENT_UNAVAILABLE", "PRICE_CHANGED"];
     console.error("[in-store-sales] Record failed", { code: saleError?.code });
-    return NextResponse.json({ error: known.includes(saleError?.message ?? "") ? saleError?.message : "Unable to record sale; check reference and capacity." }, { status: 409 });
+    return NextResponse.json({
+      error: known.includes(saleError?.message ?? "") ? saleError?.message :
+        "Unable to record sale; check reference and capacity.",
+    }, { status: 409 });
   }
-  let invitation: "not_requested" | "sent" | "failed" = "not_requested";
-  if (body.sendInvitation === true) {
-    try {
-      await sendInvitation(email, name);
-      invitation = "sent";
-      await db.from("in_store_sales").update({ invitation_sent_at: new Date().toISOString(), invitation_error: null }).eq("order_id", orderId);
-    } catch {
-      invitation = "failed";
-      await db.from("in_store_sales").update({ invitation_error: "Delivery failed" }).eq("order_id", orderId);
-    }
+
+  // The transaction has committed. Only this committed order can trigger email.
+  const { data: savedOrder, error: savedError } = await db.from("orders")
+    .select("auth_user_id").eq("id", orderId).single();
+  if (savedError || !savedOrder) {
+    console.error("[in-store-sales] Failed to retrieve committed order", { code: savedError?.code });
   }
-  let marketing: "not_requested" | "subscribed" | "failed" | "not_configured" = "not_requested";
-  if (body.marketingConsent === true) {
-    marketing = await subscribeMarketing(email);
-    await db.from("in_store_sales").update({
-      marketing_subscription_status: marketing,
-      marketing_subscribed_at: marketing === "subscribed" ? new Date().toISOString() : null,
-    }).eq("order_id", orderId);
-    if (marketing === "subscribed") {
-      const { data: customer } = await db.from("customers").select("auth_user_id").eq("email", email).maybeSingle();
-      if (customer) await db.from("customers").update({
-        marketing_consent: true, marketing_consent_at: new Date().toISOString(),
-        beehiiv_subscribed: true, beehiiv_subscribed_at: new Date().toISOString(),
-      }).eq("auth_user_id", customer.auth_user_id);
-    }
+  const offerRegistration = savedOrder?.auth_user_id == null;
+  let confirmation: "sent" | "failed" = "failed";
+  try {
+    await sendBookingConfirmation({
+      orderId, email, name, reference, saleDate, eventName: event.title,
+      startsAt: event.starts_at, totalPence: total,
+      tickets: items.map((item) => ({ name: tickets.get(item.ticketTypeId)?.name ?? "Event ticket", quantity: item.quantity })),
+      offerRegistration,
+    });
+    confirmation = "sent";
+  } catch (error) {
+    console.error("[in-store-sales] Booking email failed", {
+      category: error instanceof Error ? error.name : "unknown",
+    });
   }
-  return NextResponse.json({ success: true, orderId, invitation, marketing });
+  const { error: statusError } = await db.from("in_store_sales").update({
+    confirmation_status: confirmation,
+    confirmation_sent_at: confirmation === "sent" ? new Date().toISOString() : null,
+    confirmation_error: confirmation === "failed" ? "Delivery failed" : null,
+    registration_offered: offerRegistration,
+  }).eq("order_id", orderId);
+  if (statusError) console.error("[in-store-sales] Confirmation status update failed", { code: statusError.code });
+
+  return NextResponse.json({ success: true, orderId, confirmation });
 }
