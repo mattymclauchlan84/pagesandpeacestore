@@ -275,7 +275,7 @@ begin
 
   select * into v_sale from app_core.in_store_sales where order_id=p_order_id;
   if not found then raise exception 'SUMUP_ORDER_NOT_FOUND' using errcode='22023'; end if;
-  if p_refund_date < v_sale.paid_at then
+  if (p_refund_date at time zone 'Europe/London')::date < v_sale.sale_date then
     raise exception 'INVALID_REFUND_DATE' using errcode='22023';
   end if;
 
