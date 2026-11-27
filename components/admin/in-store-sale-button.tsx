@@ -21,7 +21,11 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
   const [customerMatch, setCustomerMatch] = useState<"known" | "guest" | "checking" | null>(null);
   const [reference, setReference] = useState("");
   const [saleDate, setSaleDate] = useState(() =>
-    new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+    (() => {
+      const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date())
+      .reduce((parts, item) => ({ ...parts, [item.type]: item.value }), {} as Record<string, string>);
+      return parts.year + "-" + parts.month + "-" + parts.day;
+    })()
   );
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
