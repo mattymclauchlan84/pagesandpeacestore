@@ -1,5 +1,12 @@
 # Project Change Log
 
+## 2026-11-27 — Admin event-booking lookup reliability (preview)
+
+Vercel production runtime logs identified repeated `Could not load event bookings` exceptions on `/admin`. Correlated Supabase gateway logs showed five HTTP 400 responses for `/rest/v1/bookings` with 25,062-character URLs, while neighbouring queries succeeded. The production database remained healthy. The admin sales summary requested all event-order-line IDs in a single PostgREST `.in()` query.
+
+The repair batches all five ID-based reads in the event-order report (order lines, bookings, events, ticket types and customers) into requests of at most 100 IDs. This preserves the existing mappings and fails closed if any batch fails (rather than displaying incomplete financial totals). Diagnostics log a database error code and batch index without customer or payment details. A 24-hour Supabase REST URL audit found order-line URLs as long as 24,848 characters (successful), customer URLs 7,804, ticket-type URLs 5,236 and event URLs 4,679; only bookings URLs at 25,062 characters showed the matching HTTP 400 incident. Other small HTTP 400/404 results were observed but are not evidenced as URL-length failures. Other repository query paths require a separate code-level review where applicable. No schema, reservations, booking, payment, refund or permission changes. Confirm build/preview and an authenticated admin read before release; previews connected to production remain read-only.
+
+
 This log records material product, architecture, security and delivery decisions from the engineering-governance baseline onward. Earlier rationale is **unknown / pre-baseline** unless supported by repository evidence.
 
 ## Public event availability labels
