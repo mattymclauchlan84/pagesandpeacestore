@@ -1,5 +1,9 @@
 # Project Change Log
 
+## 2026-11-27 — SumUp refund confirmation email
+
+The live acceptance test recorded and fully refunded an £18 SumUp order for two tickets. The booking confirmation was accepted by the mail provider. The order, both ticket lines and the refund audit reconciled, with both seats released. The SumUp preview now sends a refund confirmation using the existing Stripe refund template, with details from the committed SumUp refund. Replayed requests use the same provider key, and a failure to send leaves the refund recorded. Existing Stripe refund handling is unchanged.
+
 ## 2026-11-27 — Approved live database setup for SumUp preview acceptance
 
 The owner approved applying the SumUp schema while keeping the app in a draft preview. After verifying the scheduled database recovery point and existing ticketing schema, the tested migration was applied as `20261127174304_sumup_in_store_event_sales`. Both tables have RLS, all four functions are executable only by the service role, and existing booking counts were identical across the migration checks. There were no SumUp sales or refunds following migration.

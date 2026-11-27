@@ -2,12 +2,14 @@
 import { useState } from "react";
 import { Dialog } from "radix-ui";
 import { parseLondonDateTimeInput, toLondonDateTimeInput } from "@/lib/time/london";
+import { useToast } from "@/components/ui/useToast";
 import { useRouter } from "next/navigation";
 
 type Line = { id: string; name: string; unitAmountPence: number; remainingQuantity: number };
 type Props = { orderId: string; lines: Line[]; customerEmail: string; paymentReference: string; saleDate: string; canRecord: boolean; previewPilot: boolean };
 export default function InStoreRefundButton({ orderId, lines, customerEmail, paymentReference, saleDate, canRecord, previewPilot }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [reference, setReference] = useState("");
@@ -16,6 +18,7 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [recorded, setRecorded] = useState<"failed" | "review" | null>(null);
   const selected = lines.filter((line) => (quantities[line.id] ?? 0) > 0);
   const amount = selected.reduce((sum, line) => sum + (quantities[line.id] ?? 0) * line.unitAmountPence, 0);
   const canSave = !busy && confirmed && selected.length > 0 && reference.trim().length >= 3 && !!refundDate;
@@ -36,13 +39,25 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
       });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.success) throw new Error(result?.error ?? "Could not record refund");
-      setOpen(false); router.refresh();
+      if (result.confirmation !== "sent") {
+        setRecorded(result.confirmation === "review" ? "review" : "failed");
+        return;
+      }
+      toast({
+        title: "Refund recorded",
+        description: "Refund confirmation accepted by the email provider.",
+        variant: "success",
+      });
+      setOpen(false);
+      router.refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to record refund"); }
     finally { setBusy(false); }
   }
   return <Dialog.Root open={open} onOpenChange={(nextOpen) => {
     if (busy) return;
+    if (!nextOpen && recorded) router.refresh();
     if (nextOpen) {
+      setRecorded(null);
       setQuantities({});
       setReference("");
       setRefundDate(toLondonDateTimeInput(new Date()));
@@ -61,6 +76,20 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
       <Dialog.Content className="fixed inset-x-3 top-1/2 z-[91] mx-auto max-h-[92dvh] max-w-lg -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
         <Dialog.Title className="text-xl font-semibold">Record SumUp refund</Dialog.Title>
         <Dialog.Description className="text-sm text-amber-900">{previewPilot ? "Record a test refund for this preview sale. Confirming restores the live places." : "First refund the customer in SumUp. Then record the completed transaction here. Capacity returns only after confirmation."}</Dialog.Description>
+        {recorded ? <div className="space-y-4">
+          <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+            The refund is recorded and the seats are restored. {recorded === "review"
+              ? "Review delivery in Resend before following up."
+              : "The confirmation email could not be verified. You can retry the email here."}
+          </p>
+          {error ? <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Dialog.Close disabled={busy} className="rounded-lg border px-4 py-2">Close</Dialog.Close>
+            {recorded === "failed" ? <button type="button" disabled={busy} onClick={save} className="rounded-lg bg-amber-800 px-4 py-2 font-semibold text-white disabled:opacity-40">
+              {busy ? "Retrying…" : "Retry refund confirmation"}
+            </button> : null}
+          </div>
+        </div> : <>
         <div className="break-words rounded-lg border bg-stone-50 p-3 text-sm">
           <p><strong>Customer email:</strong> {customerEmail || "—"}</p>
           <p><strong>Date of sale:</strong> {saleDate}</p>
@@ -99,6 +128,7 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
             {busy ? "Saving…" : "Confirm external refund"}
           </button>
         </div>
+        </>}
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>;

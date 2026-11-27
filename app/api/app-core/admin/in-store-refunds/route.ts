@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { appCoreDb } from "@/lib/app-core/service";
+import { sendInStoreRefundConfirmation } from "@/lib/app-core/in-store-refund-confirmation";
 import { requireAdminUser } from "@/lib/auth/require-admin-user";
 import { inStoreUuid, inStoreWriteMode, isInStoreTestReference, isPreviewPilotSale, readInStoreJson } from "@/lib/app-core/in-store";
 
@@ -59,5 +60,7 @@ export async function POST(request: Request) {
       "Unable to verify whether the refund was recorded. Retry with the same details. Do not refund again in SumUp." },
     { status: message ? 409 : 503 });
   }
-  return NextResponse.json({ success: true, amountPence: Number(amount) });
+  const confirmation = await sendInStoreRefundConfirmation(orderId, refundReference, isInStoreTestReference(refundReference),
+    mode === "preview-pilot" ? admin.id : undefined);
+  return NextResponse.json({ success: true, amountPence: Number(amount), confirmation });
 }
