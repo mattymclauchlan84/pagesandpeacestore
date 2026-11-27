@@ -9,7 +9,7 @@ export type EventAttendanceRow = {
   ticketType: string;
   activeQuantity: number;
   bookingStatus: "confirmed";
-  salesChannel: "online";
+  salesChannel: "online" | "sumup";
 };
 
 export type EventAttendanceSummary = {
@@ -39,10 +39,10 @@ export async function getEventAttendance(eventId: string): Promise<{
   const confirmedBookings = bookings ?? [];
   const lineIds = confirmedBookings.map((booking) => booking.order_line_id);
   const ticketTypeIds = [...new Set(confirmedBookings.map((booking) => booking.ticket_type_id))];
-  const customerIds = [...new Set(confirmedBookings.map((booking) => booking.auth_user_id))];
+  const customerIds = [...new Set(confirmedBookings.map((booking) => booking.auth_user_id).filter((id): id is string => Boolean(id)))];
 
   const [{ data: lines, error: linesError }, { data: ticketTypes, error: ticketTypesError }, { data: customers, error: customersError }] = await Promise.all([
-    lineIds.length ? db.from("order_lines").select("id, refunded_quantity").in("id", lineIds) : Promise.resolve({ data: [], error: null }),
+    lineIds.length ? db.from("order_lines").select("id, refunded_quantity, order_id").in("id", lineIds) : Promise.resolve({ data: [], error: null }),
     ticketTypeIds.length ? db.from("ticket_types").select("id, name").in("id", ticketTypeIds) : Promise.resolve({ data: [], error: null }),
     customerIds.length ? db.from("customers").select("auth_user_id, display_name, email").in("auth_user_id", customerIds) : Promise.resolve({ data: [], error: null }),
   ]);
@@ -50,6 +50,18 @@ export async function getEventAttendance(eventId: string): Promise<{
   if (linesError || ticketTypesError || customersError) {
     throw new Error("Unable to load attendance details");
   }
+
+  const orderIds = [...new Set((lines ?? []).map((line) => line.order_id))];
+  const { data: inStoreSales, error: inStoreError } = orderIds.length
+    ? await db.from("in_store_sales").select("order_id").in("order_id", orderIds)
+    : { data: [], error: null };
+  // Until the additive migration is applied, existing online attendance
+  // continues to work rather than breaking the preview.
+  if (inStoreError && !["42P01", "PGRST205", "PGRST204"].includes(inStoreError.code)) {
+    throw new Error("Unable to load event sales channels");
+  }
+  const sumupOrders = new Set((inStoreSales ?? []).map((sale) => sale.order_id));
+  const orderByLine = new Map((lines ?? []).map((line) => [line.id, line.order_id]));
 
   const refundedByLine = new Map((lines ?? []).map((line) => [line.id, Number(line.refunded_quantity ?? 0)]));
   const ticketById = new Map((ticketTypes ?? []).map((ticket) => [ticket.id, ticket.name]));
@@ -67,7 +79,7 @@ export async function getEventAttendance(eventId: string): Promise<{
       ticketType: ticketById.get(booking.ticket_type_id) || "Ticket",
       activeQuantity,
       bookingStatus: "confirmed",
-      salesChannel: "online",
+      salesChannel: sumupOrders.has(orderByLine.get(booking.order_line_id)) ? "sumup" : "online",
     }];
   }).sort((a, b) => a.customerName.localeCompare(b.customerName));
 
