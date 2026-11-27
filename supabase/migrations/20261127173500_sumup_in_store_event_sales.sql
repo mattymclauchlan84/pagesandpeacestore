@@ -38,7 +38,7 @@ grant select, insert, update on app_core.in_store_sales to service_role;
 create table app_core.in_store_refunds (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references app_core.in_store_sales(order_id) on delete restrict,
-  order_line_id uuid not null references app_core.order_lines(id) on delete restrict,
+  items jsonb not null check (jsonb_typeof(items) = 'array'),
   sumup_refund_reference text not null check (length(btrim(sumup_refund_reference)) between 3 and 128),
   refund_date timestamptz not null,
   quantity integer not null check (quantity > 0),
@@ -235,8 +235,7 @@ grant execute on function app_core.link_verified_in_store_bookings(uuid) to serv
 
 create or replace function app_core.record_in_store_refund(
   p_order_id uuid,
-  p_order_line_id uuid,
-  p_quantity integer,
+  p_items jsonb,
   p_sumup_refund_reference text,
   p_refund_date timestamptz,
   p_admin_id uuid,
@@ -247,66 +246,113 @@ as $$
 declare
   v_sale app_core.in_store_sales%rowtype;
   v_event app_core.events%rowtype;
+  v_item record;
   v_line app_core.order_lines%rowtype;
   v_remaining integer;
-  v_amount integer;
+  v_amount integer := 0;
+  v_quantity integer := 0;
   v_gross integer;
   v_refunded integer;
+  v_child_remaining integer;
+  v_adult_remaining integer;
 begin
   if not exists (select 1 from app_core.admins where auth_user_id=p_admin_id) then
     raise exception 'ADMIN_REQUIRED' using errcode='22023';
   end if;
-  if p_quantity is null or p_quantity < 1 or
-    length(btrim(p_sumup_refund_reference)) not between 3 and 128
+  if p_items is null or jsonb_typeof(p_items)<>'array'
+    or jsonb_array_length(p_items) not between 1 and 20
+    or length(btrim(p_sumup_refund_reference)) not between 3 and 128
     or p_refund_date is null or p_refund_date > now()+interval '5 minutes'
     or p_refund_date < now()-interval '365 days'
+  then raise exception 'INVALID_REFUND' using errcode='22023'; end if;
+  if exists (select 1 from jsonb_array_elements(p_items) item
+    where (item->>'orderLineId') is null
+      or (item->>'quantity') !~ '^[0-9]+$'
+      or (item->>'quantity')::integer not between 1 and 30
+  ) or exists (select 1 from jsonb_array_elements(p_items) item
+    group by item->>'orderLineId' having count(*)>1)
   then raise exception 'INVALID_REFUND' using errcode='22023'; end if;
 
   select * into v_sale from app_core.in_store_sales where order_id=p_order_id;
   if not found then raise exception 'SUMUP_ORDER_NOT_FOUND' using errcode='22023'; end if;
+  if p_refund_date < v_sale.paid_at then
+    raise exception 'INVALID_REFUND_DATE' using errcode='22023';
+  end if;
+
+  -- Lock event first, then order/lines, matching the sale and checkout lock order.
   select * into v_event from app_core.events where id=v_sale.event_id for update;
   perform 1 from app_core.orders where id=p_order_id for update;
-  select * into v_line from app_core.order_lines
-    where id=p_order_line_id and order_id=p_order_id for update;
-  if not found then raise exception 'LINE_NOT_FOUND' using errcode='22023'; end if;
-  v_remaining := v_line.quantity-v_line.refunded_quantity;
-  if p_quantity>v_remaining then raise exception 'INVALID_QUANTITY' using errcode='22023'; end if;
+  perform 1 from app_core.order_lines where order_id=p_order_id order by id for update;
 
-  -- Do not leave child bookings active with no adult accompanying ticket.
-  if v_event.booking_rule is not null and
-    exists (select 1 from app_core.order_lines l join app_core.bookings b on b.order_line_id=l.id
+  -- Check all selected quantities, then evaluate the *combined* remaining group.
+  for v_item in
+    select (item->>'orderLineId')::uuid line_id,
+      (item->>'quantity')::integer quantity
+    from jsonb_array_elements(p_items) item
+  loop
+    select * into v_line from app_core.order_lines
+      where id=v_item.line_id and order_id=p_order_id;
+    if not found then raise exception 'LINE_NOT_FOUND' using errcode='22023'; end if;
+    v_remaining:=v_line.quantity-v_line.refunded_quantity;
+    if v_item.quantity>v_remaining then raise exception 'INVALID_QUANTITY' using errcode='22023'; end if;
+    v_quantity:=v_quantity+v_item.quantity;
+    v_amount:=v_amount+v_item.quantity*v_line.unit_amount_pence;
+  end loop;
+
+  if v_event.booking_rule is not null then
+    with after_refund as (
+      select l.ticket_type_id,
+        greatest(0,l.quantity-l.refunded_quantity-coalesce(x.qty,0)) remaining
+      from app_core.order_lines l
+      left join lateral (
+        select sum((item->>'quantity')::integer) qty
+        from jsonb_array_elements(p_items) item
+        where item->>'orderLineId'=l.id::text
+      ) x on true
       where l.order_id=p_order_id
-      and l.ticket_type_id::text=lower(v_event.booking_rule->>'child_ticket_id')
-      and greatest(0,l.quantity-l.refunded_quantity
-        - case when l.id=p_order_line_id then p_quantity else 0 end)>0)
-    and not exists (select 1 from app_core.order_lines l
-      where l.order_id=p_order_id and l.ticket_type_id::text=lower(v_event.booking_rule->>'adult_ticket_id')
-        and greatest(0,l.quantity-l.refunded_quantity
-          - case when l.id=p_order_line_id then p_quantity else 0 end)>0)
-  then raise exception 'ADULT_TICKET_REQUIRED' using errcode='22023'; end if;
+    )
+    select
+      coalesce(sum(remaining) filter (where ticket_type_id::text=lower(v_event.booking_rule->>'child_ticket_id')),0),
+      coalesce(sum(remaining) filter (where ticket_type_id::text=lower(v_event.booking_rule->>'adult_ticket_id')),0)
+    into v_child_remaining,v_adult_remaining from after_refund;
+    if v_child_remaining>0 and v_adult_remaining=0 then
+      raise exception 'ADULT_TICKET_REQUIRED' using errcode='22023';
+    end if;
+  end if;
 
-  v_amount:=p_quantity*v_line.unit_amount_pence;
   insert into app_core.in_store_refunds
-    (order_id,order_line_id,sumup_refund_reference,refund_date,quantity,amount_pence,reason,created_by_auth_user_id)
-    values (p_order_id,p_order_line_id,btrim(p_sumup_refund_reference),p_refund_date,
-      p_quantity,v_amount,nullif(btrim(p_reason),''),p_admin_id);
+    (order_id,items,sumup_refund_reference,refund_date,quantity,amount_pence,reason,created_by_auth_user_id)
+    values (p_order_id,p_items,btrim(p_sumup_refund_reference),p_refund_date,
+      v_quantity,v_amount,nullif(btrim(p_reason),''),p_admin_id);
 
-  update app_core.order_lines set refunded_quantity=refunded_quantity+p_quantity,
-    refunded_amount_pence=refunded_amount_pence+v_amount where id=p_order_line_id;
-  update app_core.bookings set status=case when v_remaining=p_quantity then 'refunded' else 'confirmed' end,
-    refund_processed_at=case when v_remaining=p_quantity then now() else refund_processed_at end,
-    updated_at=now() where order_line_id=p_order_line_id;
+  for v_item in
+    select (item->>'orderLineId')::uuid line_id,
+      (item->>'quantity')::integer quantity
+    from jsonb_array_elements(p_items) item
+  loop
+    update app_core.order_lines set
+      refunded_quantity=refunded_quantity+v_item.quantity,
+      refunded_amount_pence=refunded_amount_pence+v_item.quantity*unit_amount_pence
+      where id=v_item.line_id;
+    update app_core.bookings b set
+      status=case when l.refunded_quantity>=l.quantity then 'refunded' else 'confirmed' end,
+      refund_processed_at=case when l.refunded_quantity>=l.quantity then now() else b.refund_processed_at end,
+      updated_at=now()
+      from app_core.order_lines l
+      where b.order_line_id=v_item.line_id and l.id=v_item.line_id;
+  end loop;
 
   select coalesce(sum(quantity*unit_amount_pence),0),
     coalesce(sum(refunded_amount_pence),0)
     into v_gross,v_refunded from app_core.order_lines where order_id=p_order_id;
-  update app_core.orders set refunded_total_pence=v_refunded,
+  update app_core.orders set
+    refunded_total_pence=v_refunded,
     refund_status=case when v_refunded=0 then 'none' when v_refunded>=v_gross then 'full' else 'partial' end,
     status=case when v_refunded>=v_gross then 'refunded' else 'partially_refunded' end
   where id=p_order_id;
   return v_amount;
 end;
 $$;
-revoke all on function app_core.record_in_store_refund(uuid,uuid,integer,text,timestamptz,uuid,text) from public,anon,authenticated;
-grant execute on function app_core.record_in_store_refund(uuid,uuid,integer,text,timestamptz,uuid,text) to service_role;
+revoke all on function app_core.record_in_store_refund(uuid,jsonb,text,timestamptz,uuid,text) from public,anon,authenticated;
+grant execute on function app_core.record_in_store_refund(uuid,jsonb,text,timestamptz,uuid,text) to service_role;
 commit;
