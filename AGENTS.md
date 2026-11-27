@@ -71,6 +71,16 @@ Read the [ticket options](specs/2026-11-event-ticket-options.md) and [child and 
 - Process ticket refunds through Pages & Peace admin so amounts, ticket quantities, availability, order history and emails stay in sync. For grouped bookings, check that children who still attend have an adult ticket before issuing a partial refund. Check the Stripe refund status independently when settlement is in doubt. The current admin can treat a pending Stripe refund as complete.
 - Verify customer ticket quantities, shared capacity, Stripe confirmation, partial and remaining refunds, and notification delivery for applicable changes. Record live verification separately from isolated tests and exclude customer details and Stripe identifiers.
 
+## Admin reporting query reliability
+
+The 2026-11-27 incident and production fix are documented in [the project change log](docs/product/project-change-log.md) (PR #53, production commit `e5b068c`).
+
+- In `lib/app-core/event-orders.ts`, keep ID-based Supabase/PostgREST reporting lookups (orders to order lines, lines to bookings, plus events, ticket types and customers) bounded to 100 IDs per `.in()` call unless a separately verified alternative is introduced. Large URL-encoded ID arrays caused HTTP 400 errors and crashed `/admin` when booking history grew.
+- Never assume a successful morning request implies that a growing query remains safe after another order. Review request URL lengths and gateway HTTP statuses when diagnosing intermittent admin failures.
+- Preserve complete report results across batches; fail closed with a clear error rather than returning partially computed financial figures. Log sanitised error codes and batch numbers, not customer details or identifiers.
+- When adding a new large ID-list query, assess growth, pagination/batch boundaries, the risk of truncated result sets and query error handling; test with enough synthetic IDs to exercise multiple batches.
+- A 24-hour REST log audit covered observed requests, not every code path; repository-wide query audit and automated multi-batch regression coverage remain follow-up work.
+
 ## Quality
 For every slice, identify relevant lint/build/tests and execute what exists. Where automated coverage is absent, document the gap and use explicit manual acceptance checks. Do not claim checks were run when they were not.
 
