@@ -25,7 +25,7 @@ export default async function AdminEventBookingsPage({ searchParams }: { searchP
 
   const { data: inStoreSales, error: sumupError } = pagedOrders.length
     ? await appCoreDb().from("in_store_sales")
-      .select("order_id, sumup_reference, paid_at, customer_name, customer_email")
+      .select("order_id, sumup_reference, paid_at, sale_date, customer_name, customer_email")
       .in("order_id", pagedOrders.map((order) => order.id))
     : { data: [], error: null };
   // The migration must be deployed before this feature can record a sale.
@@ -46,7 +46,7 @@ export default async function AdminEventBookingsPage({ searchParams }: { searchP
       refund_status: order.refund_status ?? "none",
       customerName: inStoreSale?.customer_name ?? order.customer_name ?? customer?.display_name ?? "Customer",
       customerEmail: inStoreSale?.customer_email ?? order.customer_email ?? customer?.email ?? "",
-      sumup: inStoreSale ? { reference: inStoreSale.sumup_reference, paidAt: inStoreSale.paid_at } : null,
+      sumup: inStoreSale ? { reference: inStoreSale.sumup_reference, saleDate: inStoreSale.sale_date } : null,
       lines: order.lines.map((line) => ({
         id: line.id,
         item_name: line.item_name,
