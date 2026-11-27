@@ -39,11 +39,26 @@ async function loadEventOrders(authUserId?: string) {
   const eventOrders = typedOrders.filter((order) => eventOrderIds.has(order.id));
   const lineIds = typedLines.map((line) => line.id);
 
-  const { data: bookings, error: bookingsError } = lineIds.length
-    ? await db.from("bookings").select("id, order_line_id, event_id, ticket_type_id, auth_user_id, quantity, status, created_at").in("order_line_id", lineIds)
-    : { data: [], error: null };
-  if (bookingsError) throw new Error("Could not load event bookings");
-  const typedBookings = (bookings ?? []) as BookingRow[];
+  // A single .in() URL can exceed the PostgREST request limit as sales grow.
+  // Bound each request; do not return partial financial data if a batch fails.
+  const typedBookings: BookingRow[] = [];
+  const bookingBatchSize = 100;
+  for (let start = 0; start < lineIds.length; start += bookingBatchSize) {
+    const batchIds = lineIds.slice(start, start + bookingBatchSize);
+    const { data: bookings, error: bookingsError } = await db
+      .from("bookings")
+      .select("id, order_line_id, event_id, ticket_type_id, auth_user_id, quantity, status, created_at")
+      .in("order_line_id", batchIds);
+    if (bookingsError) {
+      console.error("[event-orders] Booking batch failed", {
+        code: bookingsError.code,
+        batch: Math.floor(start / bookingBatchSize) + 1,
+        batchSize: batchIds.length,
+      });
+      throw new Error("Could not load event bookings");
+    }
+    typedBookings.push(...((bookings ?? []) as BookingRow[]));
+  }
 
   const eventIds = [...new Set(typedBookings.map((booking) => booking.event_id))];
   const ticketIds = [...new Set(typedBookings.map((booking) => booking.ticket_type_id))];
