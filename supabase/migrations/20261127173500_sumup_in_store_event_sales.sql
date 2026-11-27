@@ -182,11 +182,13 @@ begin
 
   insert into app_core.in_store_sales
     (order_id,event_id,sumup_reference,paid_at,customer_name,customer_email,
-     account_invitation_requested,marketing_consent,marketing_consent_at,marketing_consent_text,created_by_auth_user_id)
+     account_invitation_requested,marketing_consent,marketing_consent_at,marketing_consent_text,
+     marketing_subscription_status,created_by_auth_user_id)
     values (v_order_id,p_event_id,v_reference,p_paid_at,v_name,v_email,
       coalesce(p_send_invitation,false),coalesce(p_marketing_consent,false),
       case when p_marketing_consent then now() else null end,
-      case when p_marketing_consent then p_marketing_text else null end,p_admin_id);
+      case when p_marketing_consent then p_marketing_text else null end,
+      case when p_marketing_consent then 'pending' else 'not_requested' end,p_admin_id);
 
   for v_item in
     select t.id,t.name,t.price_pence,
