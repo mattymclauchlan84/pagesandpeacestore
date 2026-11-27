@@ -1,5 +1,12 @@
 # Project Change Log
 
+## 2026-11-27 — SumUp in-store event sales (development branch; not released)
+
+The owner approved manually recording occasional completed SumUp ticket purchases in the admin dashboard, including event, ticket option/quantity, verified customer email lookup or guest booking, original payment date and reference, consented account invitation and optional marketing opt-in. Refunds remain in SumUp; Pages & Peace records completed external refunds and capacity adjustments after staff verification. Existing child/adult and shared capacity rules remain mandatory.
+
+Implementation is on branch feat/sumup-in-store-event-bookings-20261127, with a draft additive migration, a protected sales API/modal, guest email linking after verified signup, channel-aware reporting and an atomic multi-ticket SumUp refund reconciliation. Production database is unchanged. The preview uses production Supabase and blocks all new mutation routes. The migration and high-consequence customer/payment flows require isolated database tests and independent review prior to approval for rollout. See [the specification](../../specs/2026-11-sumup-in-store-event-sales.md).
+
+
 ## 2026-11-27 — Admin event-booking lookup reliability (released)
 
 Vercel production runtime logs identified repeated `Could not load event bookings` exceptions on `/admin`. Correlated Supabase gateway logs showed five HTTP 400 responses for `/rest/v1/bookings` with 25,062-character URLs, while neighbouring queries succeeded. The production database remained healthy. The admin sales summary requested all event-order-line IDs in a single PostgREST `.in()` query.
