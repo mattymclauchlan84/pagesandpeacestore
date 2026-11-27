@@ -35,7 +35,7 @@ export default async function AppCoreEventSalesSummary() {
   const lines = orders.flatMap((order) => order.lines.map((line) => ({
     orderId: order.id,
     name: canonicalEventName(line.event?.series_name, line.event?.title, line.item_name),
-    createdAt: order.created_at,
+    createdAt: order.paid_at ?? order.created_at,
     quantity: Number(line.quantity),
     refundedQuantity: Number(line.refunded_quantity ?? 0),
     grossPence: Number(line.quantity) * Number(line.unit_amount_pence),
