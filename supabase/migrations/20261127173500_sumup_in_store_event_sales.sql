@@ -61,6 +61,7 @@ create or replace function app_core.record_in_store_sale(
   p_customer_email text,
   p_sumup_reference text,
   p_paid_at timestamptz,
+  p_expected_total_pence integer,
   p_admin_id uuid,
   p_send_invitation boolean,
   p_marketing_consent boolean,
@@ -91,6 +92,7 @@ begin
     or length(v_name) not between 1 and 120
     or length(v_email) not between 3 and 254 or v_email !~ '^[^ @]+@[^ @]+\.[^ @]+$'
     or length(v_reference) not between 3 and 128
+    or p_expected_total_pence is null or p_expected_total_pence < 0
     or p_paid_at is null or p_paid_at > now() + interval '5 minutes'
     or p_paid_at < now() - interval '365 days'
     or (p_marketing_consent and nullif(btrim(p_marketing_text), '') is null)
@@ -167,6 +169,7 @@ begin
     v_total := v_total+(v_item.price_pence::bigint*v_item.quantity);
   end loop;
   if v_total>2147483647 then raise exception 'INVALID_TOTAL' using errcode='22023'; end if;
+  if v_total<>p_expected_total_pence then raise exception 'PRICE_CHANGED' using errcode='22023'; end if;
 
   -- Associate only an already verified email. Guests remain unlinked until verification.
   select c.auth_user_id into v_user_id from app_core.customers c
@@ -205,7 +208,7 @@ begin
 end;
 $$;
 
-revoke all on function app_core.record_in_store_sale(uuid,jsonb,text,text,text,timestamptz,uuid,boolean,boolean,text) from public,anon,authenticated;
+revoke all on function app_core.record_in_store_sale(uuid,jsonb,text,text,text,timestamptz,integer,uuid,boolean,boolean,text) from public,anon,authenticated;
 grant execute on function app_core.record_in_store_sale(uuid,jsonb,text,text,text,timestamptz,uuid,boolean,boolean,text) to service_role;
 
 -- Guest purchases are linked only after the customer controls and verifies that email.
