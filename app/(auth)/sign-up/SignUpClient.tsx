@@ -16,7 +16,6 @@ export default function SignUpClient() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [marketingConsent, setMarketingConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -38,7 +37,7 @@ export default function SignUpClient() {
       const response = await fetch("/api/auth/send-magic-links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, callbackURL, intent: "signup", name: fullName, firstName, lastName, marketingConsent }),
+        body: JSON.stringify({ email, callbackURL, intent: "signup", name: fullName, firstName, lastName }),
       });
       if (!response.ok) throw new Error("Unable to start sign-up");
       setEmailSent(true);
@@ -55,7 +54,6 @@ export default function SignUpClient() {
     const params = new URLSearchParams();
     params.set("intent", "signup");
     params.set("callbackURL", callbackURL);
-    if (marketingConsent) params.set("marketing_consent", "true");
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -111,11 +109,10 @@ export default function SignUpClient() {
           <input type="text" placeholder="Last name" required className="border p-3 w-full rounded-lg disabled:opacity-60 disabled:cursor-not-allowed" value={lastName} disabled={loading || emailSent} onChange={(e) => setLastName(e.target.value)} />
         </div>
         <input type="email" placeholder="Email address" required className="border p-3 w-full rounded-lg disabled:opacity-60 disabled:cursor-not-allowed" value={email} disabled={loading || emailSent} onChange={(e) => setEmail(e.target.value)} />
-        <label className="flex items-start gap-3 rounded-lg border border-[#e4ddd5] bg-white p-3 text-sm text-[#333]"><input type="checkbox" checked={marketingConsent} onChange={(event) => setMarketingConsent(event.target.checked)} disabled={loading || emailSent} className="mt-1" /><span>Yes, I would like occasional Pages &amp; Peace emails about events, books and café news. This is optional and I can unsubscribe at any time.</span></label>
         <Button type="submit" disabled={loading || emailSent} className="w-full">{loading ? "Creating…" : "Continue"}</Button>
       </form>
 
-      <p className="text-xs text-[#6b665d] text-center">No password needed. We will send you a secure login link. Marketing emails are optional and separate from booking confirmations.</p>
+      <p className="text-xs text-[#6b665d] text-center">No password needed. We will send you a secure login link. You can choose whether to receive Pages &amp; Peace updates after joining.</p>
       <p className="text-center text-sm">Already have an account{" "}<Link href="/sign-in" className="underline font-semibold">Sign in</Link></p>
     </div>
   );
