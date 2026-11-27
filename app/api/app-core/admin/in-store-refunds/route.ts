@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     p_admin_id: admin.id, p_reason: reason,
   });
   if (error || amount == null) {
-    const known = ["ADULT_TICKET_REQUIRED", "INVALID_QUANTITY", "INVALID_REFUND", "SUMUP_ORDER_NOT_FOUND", "LINE_NOT_FOUND", "INVALID_REFUND_DATE"];
+    const known = ["ADULT_TICKET_REQUIRED", "INVALID_QUANTITY", "INVALID_REFUND", "SUMUP_ORDER_NOT_FOUND", "LINE_NOT_FOUND", "INVALID_REFUND_DATE", "DUPLICATE_SUMUP_REFERENCE"];
     console.error("[in-store-refunds] Record failed", { code: error?.code });
     return NextResponse.json({ error: known.includes(error?.message ?? "") ? error?.message : "Unable to record SumUp refund. Check the reference and ticket quantity." }, { status: 409 });
   }
