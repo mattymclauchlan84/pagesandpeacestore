@@ -71,6 +71,17 @@ Read the [ticket options](specs/2026-11-event-ticket-options.md) and [child and 
 - Process ticket refunds through Pages & Peace admin so amounts, ticket quantities, availability, order history and emails stay in sync. For grouped bookings, check that children who still attend have an adult ticket before issuing a partial refund. Check the Stripe refund status independently when settlement is in doubt. The current admin can treat a pending Stripe refund as complete.
 - Verify customer ticket quantities, shared capacity, Stripe confirmation, partial and remaining refunds, and notification delivery for applicable changes. Record live verification separately from isolated tests and exclude customer details and Stripe identifiers.
 
+## In-store SumUp event booking safety
+
+Read the [SumUp in-store sales specification](specs/2026-11-sumup-in-store-event-sales.md) before modifying POS ticket recording, guest booking identities or external refund reconciliation.
+
+- A SumUp ticket sale is an already settled payment recorded by an authorised admin, never a Stripe checkout. Do not invent or create unverified Supabase Auth users to represent guests.
+- Use the existing event row lock and combined event/ticket capacity rules for a complete, atomic paid order, lines, bookings and unique POS reference. Check the SumUp amount against locked prices in the transaction.
+- Match a customer only by verified email. An unclaimed guest order becomes associated with an account only after the verified owner signs in with the matching address.
+- Account invitation and marketing consent are distinct, voluntary, unchecked choices. Preserve the exact consent evidence and administrator identity. Never send sign-up or marketing communications without the appropriate customer agreement.
+- SumUp refunds are processed in the POS first. Record externally completed grouped ticket refunds atomically under one unique refund reference. Enforce child/adult booking integrity and do not show Stripe refund actions for POS orders.
+- The sole active database remains production. Vercel previews must not write bookings, refunds or communications; use isolated local DB fixtures for all transactional tests and secure explicit approval for production migrations.
+
 ## Admin reporting query reliability
 
 The 2026-11-27 incident and production fix are documented in [the project change log](docs/product/project-change-log.md) (PR #53, production commit `e5b068c`).
