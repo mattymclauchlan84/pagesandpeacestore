@@ -34,7 +34,6 @@ type SaleBody = {
 async function sendInvitation(email: string, name: string) {
   if (!process.env.RESEND_API_KEY) throw new Error("Email service unavailable");
   const url = new URL("https://pagesandpeace.co.uk/sign-up");
-  url.searchParams.set("email", email);
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
     from: "Pages & Peace <admin@pagesandpeace.co.uk>", to: email,
@@ -68,7 +67,9 @@ async function subscribeMarketing(email: string) {
 export async function POST(request: Request) {
   const admin = await requireAdminUser();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (process.env.VERCEL_ENV === "preview") return NextResponse.json({ error: "Preview is read-only. Test sales using an isolated local database." }, { status: 403 });
+  const localUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
+  const isolatedTest = process.env.ALLOW_LOCAL_IN_STORE_TESTS === "true" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(localUrl);
+  if (process.env.VERCEL_ENV !== "production" && !isolatedTest) return NextResponse.json({ error: "Non-production mode is read-only. Use an isolated local database for tests." }, { status: 403 });
   let body: SaleBody;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid request" }, { status: 400 }); }
   const eventId = typeof body.eventId === "string" ? body.eventId : "";
