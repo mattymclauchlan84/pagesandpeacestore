@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import EventOrdersTable from "@/components/admin/event-orders-table";
 import Pagination from "@/components/admin/Pagination";
 import { getAdminEventOrders } from "@/lib/app-core/event-orders";
-import { inStoreWriteMode, isMissingInStoreTable } from "@/lib/app-core/in-store";
+import { inStoreWriteMode, isMissingInStoreTable, isPreviewPilotSale } from "@/lib/app-core/in-store";
 import type { InStoreConfirmationStatus } from "@/lib/app-core/in-store-confirmation";
 import { appCoreDb } from "@/lib/app-core/service";
 import { requireAdminUser } from "@/lib/auth/require-admin-user";
@@ -27,7 +27,7 @@ export default async function AdminEventBookingsPage({ searchParams }: { searchP
 
   const { data: inStoreSales, error: sumupError } = pagedOrders.length
     ? await appCoreDb().from("in_store_sales")
-      .select("order_id, sumup_reference, sale_date, customer_name, customer_email, confirmation_status, confirmation_started_at")
+      .select("order_id, sumup_reference, sale_date, customer_name, customer_email, confirmation_status, confirmation_started_at, created_by_auth_user_id")
       .in("order_id", pagedOrders.map((order) => order.id))
     : { data: [], error: null };
   // The migration must be deployed before this feature can record a sale.
@@ -37,6 +37,7 @@ export default async function AdminEventBookingsPage({ searchParams }: { searchP
   }
   const sumupByOrder = new Map((inStoreSales ?? []).map((sale) => [sale.order_id, sale]));
 
+  const mode = inStoreWriteMode(admin.id);
   const confirmationCutoff = new Date().getTime() - 23 * 60 * 60 * 1000;
   const groupedOrders = pagedOrders.map((order) => {
     const customer = order.auth_user_id ? customers.get(order.auth_user_id) : undefined;
@@ -54,6 +55,7 @@ export default async function AdminEventBookingsPage({ searchParams }: { searchP
       customerEmail: inStoreSale?.customer_email ?? customer?.email ?? "",
       sumup: inStoreSale ? {
         reference: inStoreSale.sumup_reference,
+        canRecord: Boolean(mode) && (mode !== "preview-pilot" || isPreviewPilotSale(inStoreSale, admin.id)),
         saleDate: inStoreSale.sale_date,
         confirmation: (needsReview ? "review" : inStoreSale.confirmation_status) as InStoreConfirmationStatus,
       } : null,
@@ -81,7 +83,7 @@ export default async function AdminEventBookingsPage({ searchParams }: { searchP
         </p>
 
         <div className="mt-8 overflow-hidden rounded-2xl border bg-white">
-          <EventOrdersTable orders={groupedOrders} canRecord={Boolean(inStoreWriteMode())} />
+          <EventOrdersTable orders={groupedOrders} previewPilot={mode === "preview-pilot"} />
           <Pagination page={safePage} totalPages={totalPages} basePath="/admin/events/bookings" />
         </div>
 

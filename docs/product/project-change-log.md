@@ -1,5 +1,11 @@
 # Project Change Log
 
+## 2026-11-27 — Approved live database setup for SumUp preview acceptance
+
+The owner approved applying the SumUp schema while keeping the app in a draft preview. After verifying the scheduled database recovery point and existing ticketing schema, the tested migration was applied as `20261127174304_sumup_in_store_event_sales`. Both tables have RLS, all four functions are executable only by the service role, and existing booking counts were identical across the migration checks. There were no SumUp sales or refunds following migration.
+
+A temporary server-side preview exception permits the nominated admin to record sales and refunds with `TEST-` references and retry confirmation only for their own test sales. The exact feature branch and a UTC expiry are required. During that window guest linking remains restricted by the existing verified email ownership check. Staff perform the acceptance themselves using addresses they control. The live app remains on its existing release.
+
 ## 2026-11-27 — SumUp in-store event sales (development branch; not released)
 
 The owner approved manually recording occasional completed SumUp ticket purchases in the admin dashboard, including event, ticket option/quantity, verified customer email lookup or guest booking, original payment date and reference, automatic booking confirmation emailed to every purchaser, with an optional registration link included only for guest customers. Marketing consent is excluded from the in-store checkout. The existing dashboard layout redirects new Google and magic-link customers with no recorded consent choice to /onboarding/consent (“Join the club?”). The existing callback routes remain unchanged; no duplicate consent controls are added. Only the sale date (not an invented payment time) is required. Refunds remain in SumUp; Pages & Peace records completed external refunds and capacity adjustments after staff verification. Existing child/adult and shared capacity rules remain mandatory.

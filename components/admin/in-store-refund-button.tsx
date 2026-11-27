@@ -5,8 +5,8 @@ import { parseLondonDateTimeInput, toLondonDateTimeInput } from "@/lib/time/lond
 import { useRouter } from "next/navigation";
 
 type Line = { id: string; name: string; unitAmountPence: number; remainingQuantity: number };
-type Props = { orderId: string; lines: Line[]; customerEmail: string; paymentReference: string; saleDate: string; canRecord: boolean };
-export default function InStoreRefundButton({ orderId, lines, customerEmail, paymentReference, saleDate, canRecord }: Props) {
+type Props = { orderId: string; lines: Line[]; customerEmail: string; paymentReference: string; saleDate: string; canRecord: boolean; previewPilot: boolean };
+export default function InStoreRefundButton({ orderId, lines, customerEmail, paymentReference, saleDate, canRecord, previewPilot }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -60,7 +60,7 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
       <Dialog.Overlay className="fixed inset-0 z-[90] bg-black/60" />
       <Dialog.Content className="fixed inset-x-3 top-1/2 z-[91] mx-auto max-h-[92dvh] max-w-lg -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
         <Dialog.Title className="text-xl font-semibold">Record SumUp refund</Dialog.Title>
-        <Dialog.Description className="text-sm text-amber-900">First refund the customer in SumUp. Then record the completed transaction here. Capacity returns only after confirmation.</Dialog.Description>
+        <Dialog.Description className="text-sm text-amber-900">{previewPilot ? "Record a test refund for this preview sale. Confirming restores the live places." : "First refund the customer in SumUp. Then record the completed transaction here. Capacity returns only after confirmation."}</Dialog.Description>
         <div className="break-words rounded-lg border bg-stone-50 p-3 text-sm">
           <p><strong>Customer email:</strong> {customerEmail || "—"}</p>
           <p><strong>Date of sale:</strong> {saleDate}</p>
@@ -77,9 +77,10 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
             </select>
           </label>)}
         </div>
+        {previewPilot ? <p className="text-sm text-amber-800">Use a TEST- refund reference for this test sale. Recording restores the live seats.</p> : null}
         <p className="font-semibold">Amount refunded in SumUp: £{(amount / 100).toFixed(2)}</p>
         <label className="block text-sm font-medium">SumUp refund reference
-          <input value={reference} autoComplete="off" maxLength={128} onChange={(e) => { setReference(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded-lg border p-3" placeholder="From completed SumUp refund"/>
+          <input value={reference} autoComplete="off" maxLength={128} onChange={(e) => { setReference(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded-lg border p-3" placeholder={previewPilot ? "TEST-REFUND-1" : "From completed SumUp refund"}/>
         </label>
         <label className="block text-sm font-medium">SumUp refund date and time (UK)
           <input type="datetime-local" value={refundDate} onChange={(e) => { setRefundDate(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded-lg border p-3"/>
@@ -89,7 +90,7 @@ export default function InStoreRefundButton({ orderId, lines, customerEmail, pay
         </label>
         <p className="text-xs text-amber-800">For events requiring adults to accompany children, an adult ticket must remain unless the remaining child tickets are also refunded.</p>
         <label className="flex items-start gap-2 text-sm font-semibold"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1"/>
-          I have completed and verified this £{(amount / 100).toFixed(2)} refund in SumUp.
+          {previewPilot ? `Record this £${(amount / 100).toFixed(2)} test refund.` : `I have completed and verified this £${(amount / 100).toFixed(2)} refund in SumUp.`}
         </label>
         {error ? <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
         <div className="flex flex-wrap justify-end gap-2">

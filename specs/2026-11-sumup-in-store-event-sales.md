@@ -1,6 +1,6 @@
 # In-store SumUp event ticket sales
 
-**Status:** Feature branch for preview; not released. Production schema changes require separate approval.
+**Status:** Feature branch for preview; not released. The owner approved the additive live schema migration for preview acceptance. Public release remains subject to separate approval.
 
 ## Purpose
 In-store SumUp payments must be recorded as genuine event orders and confirmed bookings, deducted from shared event and ticket-option capacity, and reconciled in the same admin dashboard and reports as online orders without charging via Stripe.
@@ -49,4 +49,4 @@ The regression suite in `tests/sumup-postgres.test.mjs` runs the migration and 1
 2. Release the accepted code after the database check. Smoke-test dashboard, register, customer orders and attendance. Schedule the first real SumUp sale or refund only with operator approval, and reconcile its reference, quantity, report totals and email status. For prices that changed or a sale that cannot be entered because of capacity, reconcile the existing POS payment before promising a place. Only the operator can verify settlement in SumUp.
 3. If the feature needs to be paused, set `DISABLE_IN_STORE_WRITES=true` on the released application and redeploy it. This pauses SumUp writes, confirmation retries and claims while preserving source labels and history. Use a corrected compatible build for recovery. Leave the additive tables, foreign keys, procedures and nullable booking owner in place, and reconcile any in-flight POS payments from references before reopening. Do not remove the migration or restore a stale snapshot over new sales. If the migration fails before release, stop and validate the rolled-back schema before retrying.
 
-Hosted acceptance uses the branch preview in read-only mode. Use the isolated fixtures for confirming or retrying any sale, refund or email.
+The Vercel preview is read-only for SumUp by default. The separately approved live database acceptance window requires the exact feature branch and a preview-only `IN_STORE_PREVIEW_PILOT` value containing the nominated admin Auth UUID and a short UTC expiry, separated by a comma. The nominated admin uses `TEST-` references and addresses they control. Test sales and refunds remain in the live audit records. The kill switch or expiry closes the preview exception. Continue to use isolated fixtures for routine mutation testing.

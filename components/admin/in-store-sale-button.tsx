@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 type EventOption = { id: string; title: string; starts_at: string; capacity: number; booking_rule: { child_ticket_id?: string; adult_ticket_id?: string } | null };
 type TicketOption = { id: string; event_id: string; name: string; price_pence: number; capacity: number | null };
-type Data = { events: EventOption[]; tickets: TicketOption[]; canRecord: boolean };
+type Data = { events: EventOption[]; tickets: TicketOption[]; canRecord: boolean; previewPilot: boolean };
 const money = (pence: number) => "£" + (pence / 100).toFixed(2);
 const londonDate = (date: string) => new Date(date).toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "medium", timeStyle: "short" });
 
@@ -104,7 +104,7 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
       <Dialog.Content className="fixed inset-x-3 top-1/2 z-[91] mx-auto max-h-[92dvh] max-w-xl -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div><Dialog.Title className="text-xl font-bold">Record SumUp ticket sale</Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-neutral-600">Only record payment after it has succeeded in SumUp.</Dialog.Description></div>
+            <Dialog.Description className="mt-1 text-sm text-neutral-600">{data?.previewPilot ? "Record a test sale against the live booking database." : "Only record payment after it has succeeded in SumUp."}</Dialog.Description></div>
           <Dialog.Close type="button" disabled={busy} aria-label="Close" className="rounded-full border px-3 py-1.5">✕</Dialog.Close>
         </div>
         {loading ? <p className="mt-6">Loading events…</p> : null}
@@ -142,7 +142,7 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
             <input type="email" autoComplete="off" maxLength={254} value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} className="mt-1 w-full rounded-lg border p-3" placeholder="customer@example.com"/>
           </label>
           <label className="block text-sm font-semibold">SumUp transaction reference
-            <input value={reference} autoComplete="off" maxLength={128} onChange={(e) => { setReference(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded-lg border p-3" placeholder="Reference from SumUp receipt"/>
+            <input value={reference} autoComplete="off" maxLength={128} onChange={(e) => { setReference(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded-lg border p-3" placeholder={data?.previewPilot ? "TEST-SALE-1" : "Reference from SumUp receipt"}/>
           </label>
           <label className="block text-sm font-semibold">Date of SumUp sale (UK)
             <input type="date" value={saleDate} max={toLondonDateTimeInput(new Date()).slice(0, 10)} onChange={(e) => { setSaleDate(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded-lg border p-3"/>
@@ -154,8 +154,9 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
             Marketing preferences are chosen only during account registration.
           </p>
           <label className="flex items-start gap-2 text-sm font-semibold"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1"/>
-            I have verified the payment of {money(totalPence)} succeeded in the SumUp POS.
+            {data?.previewPilot ? `Record this ${money(totalPence)} test sale in the live register.` : `I have verified the payment of ${money(totalPence)} succeeded in the SumUp POS.`}
           </label>
+          {data?.previewPilot ? <p className="text-xs text-amber-800">Live database test. Use an inbox you control and start the reference with TEST-. Confirming reserves live seats and sends an email.</p> : null}
           {data && !data.canRecord ? <p className="text-xs text-amber-800">This preview is read-only.</p> : null}
           {error ? <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
           <div className="flex flex-wrap justify-end gap-2 pt-2">

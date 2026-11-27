@@ -28,7 +28,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   if (!user) redirect("/sign-in");
 
   const { id } = await params;
-  const orders = await getCustomerEventOrders(user.id);
+  const orders = await getCustomerEventOrders(user.id, user.email_confirmed_at ? user.email : null);
   const order = orders.find((candidate) => candidate.id === id);
   if (!order) notFound();
 

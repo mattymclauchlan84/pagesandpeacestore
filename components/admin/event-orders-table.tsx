@@ -28,7 +28,7 @@ type Order = {
   refund_status: string;
   customerName: string;
   customerEmail: string;
-  sumup: { reference: string; saleDate: string; confirmation: InStoreConfirmationStatus } | null;
+  sumup: { reference: string; saleDate: string; confirmation: InStoreConfirmationStatus; canRecord: boolean } | null;
   lines: Line[];
 };
 
@@ -42,7 +42,7 @@ function StatusIcon({ status }: { status: string }) {
   return <span title="Paid" aria-label="Paid" className="inline-flex rounded-full bg-emerald-100 p-2 text-emerald-700"><CheckCircle2 size={16} aria-hidden="true" /></span>;
 }
 
-export default function EventOrdersTable({ orders, canRecord }: { orders: Order[]; canRecord: boolean }) {
+export default function EventOrdersTable({ orders, previewPilot }: { orders: Order[]; previewPilot: boolean }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
@@ -87,8 +87,8 @@ export default function EventOrdersTable({ orders, canRecord }: { orders: Order[
                 </tr>,
                 isOpen ? <tr key={`${order.id}-detail`} className="border-t bg-[#FBF8F4]"><td colSpan={7} className="px-5 py-5">
                   <div className="flex flex-col gap-5">
-                    {order.sumup ? <InStoreConfirmation orderId={order.id} status={order.sumup.confirmation} canRecord={canRecord} /> : null}
-                    <div className="flex flex-wrap items-start justify-between gap-4"><div><h3 className="text-base font-semibold">Items in order {order.id.slice(0, 8)}</h3><p className="mt-1 text-xs text-neutral-500">{order.sumup ? "SumUp payment — refund in POS first, then record it here." : "Purchased event and ticket details. Stripe refunds require explicit confirmation."}</p>{order.sumup ? <div className="mt-2 rounded-lg bg-amber-50 p-3 text-xs"><p><strong>Original SumUp reference:</strong> {order.sumup.reference}</p><p><strong>Date of sale:</strong> {order.sumup.saleDate}</p><p><strong>Email for POS lookup:</strong> {order.customerEmail}</p></div> : null}</div>{order.sumup ? (ticketCount > 0 ? <InStoreRefundButton canRecord={canRecord} orderId={order.id} customerEmail={order.customerEmail} paymentReference={order.sumup.reference} saleDate={order.sumup.saleDate} lines={order.lines.map((line) => ({ id: line.id, name: line.ticketName, unitAmountPence: line.unit_amount_pence, remainingQuantity: Math.max(0, line.quantity - line.refunded_quantity) }))} /> : null) : net > 0 ? <AppCoreRefundButton scope="order" orderId={order.id} label="Refund remaining order" itemName={`Order ${order.id.slice(0, 8)}`} amountPence={net} /> : null}</div>
+                    {order.sumup ? <InStoreConfirmation orderId={order.id} status={order.sumup.confirmation} canRecord={order.sumup.canRecord} /> : null}
+                    <div className="flex flex-wrap items-start justify-between gap-4"><div><h3 className="text-base font-semibold">Items in order {order.id.slice(0, 8)}</h3><p className="mt-1 text-xs text-neutral-500">{order.sumup ? "SumUp payment — refund in POS first, then record it here." : "Purchased event and ticket details. Stripe refunds require explicit confirmation."}</p>{order.sumup ? <div className="mt-2 rounded-lg bg-amber-50 p-3 text-xs"><p><strong>Original SumUp reference:</strong> {order.sumup.reference}</p><p><strong>Date of sale:</strong> {order.sumup.saleDate}</p><p><strong>Email for POS lookup:</strong> {order.customerEmail}</p></div> : null}</div>{order.sumup ? (ticketCount > 0 ? <InStoreRefundButton previewPilot={previewPilot} canRecord={order.sumup.canRecord} orderId={order.id} customerEmail={order.customerEmail} paymentReference={order.sumup.reference} saleDate={order.sumup.saleDate} lines={order.lines.map((line) => ({ id: line.id, name: line.ticketName, unitAmountPence: line.unit_amount_pence, remainingQuantity: Math.max(0, line.quantity - line.refunded_quantity) }))} /> : null) : net > 0 ? <AppCoreRefundButton scope="order" orderId={order.id} label="Refund remaining order" itemName={`Order ${order.id.slice(0, 8)}`} amountPence={net} /> : null}</div>
                     <div className="grid gap-3">
                       {order.lines.map((line) => {
                         const refundedQty = Number(line.refunded_quantity ?? 0);

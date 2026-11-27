@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { appCoreDb } from "@/lib/app-core/service";
 import { requireAdminUser } from "@/lib/auth/require-admin-user";
-import { inStoreUuid, inStoreWriteMode, readInStoreJson } from "@/lib/app-core/in-store";
+import { inStoreUuid, inStoreWriteMode, isInStoreTestReference, isPreviewPilotSale, readInStoreJson } from "@/lib/app-core/in-store";
 import { confirmInStoreSale } from "@/lib/app-core/in-store-confirmation";
 
 export const runtime = "nodejs";
@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 const emailPattern = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
 
 export async function GET() {
-  if (!await requireAdminUser()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const admin = await requireAdminUser();
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const db = appCoreDb();
   const { data: events, error } = await db.from("events")
     .select("id, title, starts_at, capacity, booking_rule")
@@ -25,7 +26,8 @@ export async function GET() {
     if (ticketError) return NextResponse.json({ error: "Could not load ticket options" }, { status: 503 });
     tickets.push(...(data ?? []));
   }
-  return NextResponse.json({ events: events ?? [], tickets, canRecord: Boolean(inStoreWriteMode()) });
+  const mode = inStoreWriteMode(admin.id);
+  return NextResponse.json({ events: events ?? [], tickets, canRecord: Boolean(mode), previewPilot: mode === "preview-pilot" });
 }
 
 const saleErrors: Record<string, string> = {
@@ -39,10 +41,17 @@ const saleErrors: Record<string, string> = {
   PRICE_CHANGED: "Ticket prices changed. Reopen the sale form and check the payment total.",
 };
 
+async function canSendPilotConfirmation(orderId: string, adminId: string) {
+  const { data, error } = await appCoreDb().from("in_store_sales")
+    .select("sumup_reference, created_by_auth_user_id").eq("order_id", orderId).maybeSingle();
+  return !error && Boolean(data && isPreviewPilotSale(data, adminId));
+}
+
 export async function POST(request: Request) {
   const admin = await requireAdminUser();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!inStoreWriteMode()) {
+  const mode = inStoreWriteMode(admin.id);
+  if (!mode) {
     return NextResponse.json({ error: "In-store sales are read-only in this environment." }, { status: 403 });
   }
   const body = await readInStoreJson(request);
@@ -52,6 +61,9 @@ export async function POST(request: Request) {
     const orderId = body.retryConfirmationOrderId;
     if (typeof orderId !== "string" || !inStoreUuid.test(orderId)) {
       return NextResponse.json({ error: "Invalid order" }, { status: 400 });
+    }
+    if (mode === "preview-pilot" && !await canSendPilotConfirmation(orderId, admin.id)) {
+      return NextResponse.json({ error: "Preview retries are limited to your test sales." }, { status: 403 });
     }
     const confirmation = await confirmInStoreSale(orderId);
     if (!confirmation) return NextResponse.json({ error: "SumUp order not found" }, { status: 404 });
@@ -80,6 +92,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Complete all fields and confirm SumUp payment." }, { status: 400 });
   }
 
+  if (mode === "preview-pilot" && !isInStoreTestReference(reference)) {
+    return NextResponse.json({ error: "Start the preview sale reference with TEST-." }, { status: 400 });
+  }
   const db = appCoreDb();
   const items = body.items as Array<{ ticketTypeId: string; quantity: number }>;
   const { data: orderId, error: saleError } = await db.rpc("record_in_store_sale", {
@@ -95,6 +110,9 @@ export async function POST(request: Request) {
     }, { status: message ? 409 : 503 });
   }
 
+  if (mode === "preview-pilot" && !await canSendPilotConfirmation(orderId, admin.id)) {
+    return NextResponse.json({ error: "The reference is unavailable for this preview test." }, { status: 409 });
+  }
   const confirmation = await confirmInStoreSale(orderId) ?? "pending";
   return NextResponse.json({ success: true, orderId, confirmation });
 }

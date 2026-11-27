@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { appCoreDb } from "@/lib/app-core/service";
 import { requireAdminUser } from "@/lib/auth/require-admin-user";
-import { inStoreUuid, inStoreWriteMode, readInStoreJson } from "@/lib/app-core/in-store";
+import { inStoreUuid, inStoreWriteMode, isInStoreTestReference, isPreviewPilotSale, readInStoreJson } from "@/lib/app-core/in-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   const admin = await requireAdminUser();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!inStoreWriteMode()) return NextResponse.json({ error: "In-store refunds are read-only in this environment." }, { status: 403 });
+  const mode = inStoreWriteMode(admin.id);
+  if (!mode) return NextResponse.json({ error: "In-store refunds are read-only in this environment." }, { status: 403 });
   const data = await readInStoreJson(request);
   if (!data) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   const orderId = typeof data.orderId === "string" ? data.orderId : "";
@@ -26,7 +27,18 @@ export async function POST(request: Request) {
     !Number.isFinite(refundDate.getTime()) || !confirmed) {
     return NextResponse.json({ error: "Confirm the completed SumUp refund and enter its reference and date." }, { status: 400 });
   }
-  const { data: amount, error } = await appCoreDb().rpc("record_in_store_refund", {
+  const db = appCoreDb();
+  if (mode === "preview-pilot") {
+    if (!isInStoreTestReference(refundReference)) {
+      return NextResponse.json({ error: "Start the preview refund reference with TEST-." }, { status: 400 });
+    }
+    const { data: sale, error } = await db.from("in_store_sales")
+      .select("sumup_reference, created_by_auth_user_id").eq("order_id", orderId).maybeSingle();
+    if (error || !sale || !isPreviewPilotSale(sale, admin.id)) {
+      return NextResponse.json({ error: "Preview refunds are limited to your test sales." }, { status: 403 });
+    }
+  }
+  const { data: amount, error } = await db.rpc("record_in_store_refund", {
     p_order_id: orderId, p_items: items,
     p_sumup_refund_reference: refundReference, p_refund_date: refundDate.toISOString(),
     p_admin_id: admin.id, p_reason: reason,

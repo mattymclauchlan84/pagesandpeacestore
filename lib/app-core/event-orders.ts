@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import { inStoreWriteMode, isMissingInStoreTable } from "@/lib/app-core/in-store";
+import { inStoreWriteMode, isMissingInStoreTable, isPreviewPilotSale, previewPilotAdminForGuestClaim } from "@/lib/app-core/in-store";
 import { appCoreDb } from "@/lib/app-core/service";
 
 type OrderRow = { id: string; auth_user_id: string | null; status: string; total_pence: number; currency: string; created_at: string; refund_status: string; refunded_total_pence: number };
@@ -148,8 +148,20 @@ async function loadEventOrders(authUserId?: string) {
   };
 }
 
-export const getCustomerEventOrders = cache(async (authUserId: string) => {
-  if (inStoreWriteMode()) {
+async function canClaimPreviewTestOrders(verifiedEmail?: string | null) {
+  const adminId = previewPilotAdminForGuestClaim();
+  if (!adminId || !verifiedEmail) return false;
+
+  const { data, error } = await appCoreDb().from("in_store_sales")
+    .select("sumup_reference, created_by_auth_user_id, orders!inner(auth_user_id)")
+    .eq("customer_email", verifiedEmail.trim().toLowerCase()).is("orders.auth_user_id", null)
+    .limit(101);
+  return !error && Boolean(data?.length && data.length <= 100 &&
+    data.every((sale) => isPreviewPilotSale(sale, adminId)));
+}
+
+export const getCustomerEventOrders = cache(async (authUserId: string, verifiedEmail?: string | null) => {
+  if (inStoreWriteMode() || await canClaimPreviewTestOrders(verifiedEmail)) {
     const { error } = await appCoreDb().rpc("link_verified_in_store_bookings", { p_auth_user_id: authUserId });
     if (error && error.code !== "PGRST202" && error.code !== "42883") {
       console.error("[event-orders] Guest booking link failed", { code: error.code });

@@ -27,7 +27,7 @@ export default async function OrdersPage() {
   const { data: { user } } = await auth.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const orders = await getCustomerEventOrders(user.id);
+  const orders = await getCustomerEventOrders(user.id, user.email_confirmed_at ? user.email : null);
 
   return <main className="min-h-screen bg-[#FAF6F1] px-6 py-12 text-[#111]">
     <div className="mx-auto max-w-5xl">
