@@ -18,6 +18,7 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [customerMatch, setCustomerMatch] = useState<"known" | "guest" | "checking" | null>(null);
   const [reference, setReference] = useState("");
   const [paidAt, setPaidAt] = useState(() => {
     const date = new Date();
@@ -43,6 +44,20 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [open]);
+
+  async function checkCustomer() {
+    const email = customerEmail.trim().toLowerCase();
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return;
+    setCustomerMatch("checking");
+    try {
+      const response = await fetch("/api/app-core/admin/in-store-sales?email=" + encodeURIComponent(email), { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error("Lookup unavailable");
+      setCustomerMatch(result.existingCustomer ? "known" : "guest");
+    } catch {
+      setCustomerMatch(null);
+    }
+  }
 
   const event = data?.events.find((item) => item.id === eventId);
   const tickets = useMemo(() => (data?.tickets ?? []).filter((ticket) => ticket.event_id === eventId), [data, eventId]);
@@ -98,7 +113,7 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
         {loading ? <p className="mt-6">Loading events…</p> : null}
         {success ? <div role="status" className="mt-5 rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-900">{success}
           <div className="mt-3 flex gap-2">
-            <button type="button" className="rounded-lg border px-3 py-2" onClick={() => { setSuccess(""); setReference(""); setQuantities({}); setCustomerName(""); setCustomerEmail(""); setInvitation(false); setMarketing(false); }}>Record another</button>
+            <button type="button" className="rounded-lg border px-3 py-2" onClick={() => { setSuccess(""); setReference(""); setQuantities({}); setCustomerName(""); setCustomerEmail(""); setCustomerMatch(null); setInvitation(false); setMarketing(false); }}>Record another</button>
             <button type="button" className="rounded-lg bg-green-800 px-3 py-2 text-white" onClick={close}>Close</button>
           </div>
         </div> : <div className="mt-5 space-y-4">
@@ -124,9 +139,9 @@ export default function InStoreSaleButton({ defaultEventId }: { defaultEventId?:
             <input autoComplete="name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="mt-1 w-full rounded-lg border p-3" placeholder="Full name"/>
           </label>
           <label className="block text-sm font-semibold">Customer email
-            <input type="email" autoComplete="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} className="mt-1 w-full rounded-lg border p-3" placeholder="customer@example.com"/>
+            <input type="email" autoComplete="email" value={customerEmail} onChange={(e) => { setCustomerEmail(e.target.value); setCustomerMatch(null); }} onBlur={checkCustomer} className="mt-1 w-full rounded-lg border p-3" placeholder="customer@example.com"/>
           </label>
-          <p className="text-xs text-neutral-600">Staff prompt: “Can I take your email so we can attach your tickets to your booking?” Existing verified customers are matched automatically. New customers can attend as guests.</p>
+          <p className="text-xs text-neutral-600">Staff prompt: “Can I take your email so we can attach your tickets to your booking?” Existing verified customers are matched automatically. New customers can attend as guests.</p>{customerMatch === "checking" ? <p className="text-xs text-neutral-600">Checking customer…</p> : customerMatch === "known" ? <p className="text-xs font-medium text-emerald-800">Existing verified account found. Tickets will be associated with this customer.</p> : customerMatch === "guest" ? <p className="text-xs font-medium text-amber-800">No verified account found. This will be a guest booking; offer an invitation.</p> : null}
           <label className="block text-sm font-semibold">SumUp transaction reference
             <input value={reference} onChange={(e) => setReference(e.target.value)} className="mt-1 w-full rounded-lg border p-3" placeholder="Reference from SumUp receipt"/>
           </label>
