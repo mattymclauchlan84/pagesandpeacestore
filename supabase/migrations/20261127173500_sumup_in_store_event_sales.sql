@@ -205,6 +205,31 @@ $$;
 revoke all on function app_core.record_in_store_sale(uuid,jsonb,text,text,text,timestamptz,uuid,boolean,boolean,text) from public,anon,authenticated;
 grant execute on function app_core.record_in_store_sale(uuid,jsonb,text,text,text,timestamptz,uuid,boolean,boolean,text) to service_role;
 
+-- Guest purchases are linked only after the customer controls and verifies that email.
+create or replace function app_core.link_verified_in_store_bookings(p_auth_user_id uuid)
+returns integer
+language plpgsql security invoker set search_path to ''
+as $
+declare
+  v_email text;
+  v_count integer;
+begin
+  select lower(btrim(u.email)) into v_email from auth.users u
+    where u.id=p_auth_user_id and u.email_confirmed_at is not null;
+  if v_email is null then return 0; end if;
+  update app_core.orders o set auth_user_id=p_auth_user_id
+    from app_core.in_store_sales s
+    where s.order_id=o.id and o.auth_user_id is null and lower(s.customer_email)=v_email;
+  get diagnostics v_count=row_count;
+  update app_core.bookings b set auth_user_id=p_auth_user_id,updated_at=now()
+    from app_core.order_lines l join app_core.in_store_sales s on s.order_id=l.order_id
+    where b.order_line_id=l.id and b.auth_user_id is null and lower(s.customer_email)=v_email;
+  return v_count;
+end;
+$;
+revoke all on function app_core.link_verified_in_store_bookings(uuid) from public,anon,authenticated;
+grant execute on function app_core.link_verified_in_store_bookings(uuid) to service_role;
+
 create or replace function app_core.record_in_store_refund(
   p_order_id uuid,
   p_order_line_id uuid,
