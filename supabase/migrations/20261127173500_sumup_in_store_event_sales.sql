@@ -12,22 +12,17 @@ create table app_core.in_store_sales (
   event_id uuid not null references app_core.events(id) on delete restrict,
   sumup_reference text not null check (length(btrim(sumup_reference)) between 3 and 128),
   paid_at timestamptz not null,
+  sale_date date not null,
   customer_name text not null check (length(btrim(customer_name)) between 1 and 120),
   customer_email text not null check (length(customer_email) between 3 and 254),
-  account_invitation_requested boolean not null default false,
-  marketing_consent boolean not null default false,
-  marketing_consent_at timestamptz,
-  marketing_consent_text text,
+  confirmation_status text not null default 'pending'
+    check (confirmation_status in ('pending', 'sent', 'failed')),
+  confirmation_sent_at timestamptz,
+  confirmation_error text,
   created_by_auth_user_id uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
-  invitation_sent_at timestamptz,
-  invitation_error text,
-  marketing_subscription_status text not null default 'not_requested'
-    check (marketing_subscription_status in ('not_requested','pending','subscribed','failed','not_configured')),
-  marketing_subscribed_at timestamptz,
-  constraint store_marketing_evidence check (
-    marketing_consent = false or (marketing_consent_at is not null and marketing_consent_text is not null)
-  )
+  -- Registration is offered in the booking confirmation only when no verified account exists.
+  registration_offered boolean not null default false
 );
 create unique index in_store_sales_reference_unique on app_core.in_store_sales (lower(btrim(sumup_reference)));
 create index in_store_sales_email_idx on app_core.in_store_sales (lower(customer_email));
@@ -60,12 +55,9 @@ create or replace function app_core.record_in_store_sale(
   p_customer_name text,
   p_customer_email text,
   p_sumup_reference text,
-  p_paid_at timestamptz,
+  p_sale_date date,
   p_expected_total_pence integer,
-  p_admin_id uuid,
-  p_send_invitation boolean,
-  p_marketing_consent boolean,
-  p_marketing_text text
+  p_admin_id uuid
 ) returns uuid
 language plpgsql security invoker set search_path to ''
 as $$
@@ -82,7 +74,9 @@ declare
   v_email text := lower(btrim(p_customer_email));
   v_reference text := btrim(p_sumup_reference);
   v_name text := btrim(p_customer_name);
-  v_requested jsonb;
+  -- Existing order/report schemas need a timestamp; use London noon as an
+  -- internal placeholder and keep the true date in sale_date.
+  v_paid_at timestamptz;
 begin
   if not exists (select 1 from app_core.admins where auth_user_id = p_admin_id) then
     raise exception 'ADMIN_REQUIRED' using errcode = '22023';
@@ -93,10 +87,12 @@ begin
     or length(v_email) not between 3 and 254 or v_email !~ '^[^ @]+@[^ @]+\.[^ @]+$'
     or length(v_reference) not between 3 and 128
     or p_expected_total_pence is null or p_expected_total_pence < 0
-    or p_paid_at is null or p_paid_at > now() + interval '5 minutes'
-    or p_paid_at < now() - interval '365 days'
-    or (p_marketing_consent and nullif(btrim(p_marketing_text), '') is null)
+    or p_sale_date is null
+    or p_sale_date > (now() at time zone 'Europe/London')::date
+    or p_sale_date < (now() at time zone 'Europe/London')::date - 365
   then raise exception 'INVALID_SALE' using errcode = '22023'; end if;
+
+  v_paid_at := (p_sale_date::timestamp + interval '12 hours') at time zone 'Europe/London';
 
   if exists (select 1 from app_core.in_store_sales where lower(btrim(sumup_reference)) = lower(v_reference)) then
     raise exception 'DUPLICATE_SUMUP_REFERENCE' using errcode = '23505';
@@ -180,18 +176,14 @@ begin
 
   insert into app_core.orders
     (auth_user_id,status,total_pence,currency,paid_at,customer_name,customer_email)
-    values (v_user_id,'paid',v_total::integer,'gbp',p_paid_at,v_name,v_email)
+    values (v_user_id,'paid',v_total::integer,'gbp',v_paid_at,v_name,v_email)
     returning id into v_order_id;
 
   insert into app_core.in_store_sales
-    (order_id,event_id,sumup_reference,paid_at,customer_name,customer_email,
-     account_invitation_requested,marketing_consent,marketing_consent_at,marketing_consent_text,
-     marketing_subscription_status,created_by_auth_user_id)
-    values (v_order_id,p_event_id,v_reference,p_paid_at,v_name,v_email,
-      coalesce(p_send_invitation,false),coalesce(p_marketing_consent,false),
-      case when p_marketing_consent then now() else null end,
-      case when p_marketing_consent then p_marketing_text else null end,
-      case when p_marketing_consent then 'pending' else 'not_requested' end,p_admin_id);
+    (order_id,event_id,sumup_reference,paid_at,sale_date,customer_name,customer_email,
+     registration_offered,created_by_auth_user_id)
+    values (v_order_id,p_event_id,v_reference,v_paid_at,p_sale_date,v_name,v_email,
+      v_user_id is null,p_admin_id);
 
   for v_item in
     select t.id,t.name,t.price_pence,
@@ -213,7 +205,7 @@ begin
 end;
 $$;
 
-revoke all on function app_core.record_in_store_sale(uuid,jsonb,text,text,text,timestamptz,integer,uuid,boolean,boolean,text) from public,anon,authenticated;
+revoke all on function app_core.record_in_store_sale(uuid,jsonb,text,text,text,date,integer,uuid) from public,anon,authenticated;
 grant execute on function app_core.record_in_store_sale(uuid,jsonb,text,text,text,timestamptz,uuid,boolean,boolean,text) to service_role;
 
 -- Guest purchases are linked only after the customer controls and verifies that email.
