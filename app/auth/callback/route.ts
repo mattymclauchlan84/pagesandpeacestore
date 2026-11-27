@@ -35,12 +35,5 @@ export async function GET(request: Request) {
   const consent = url.searchParams.get("marketing_consent") === "true";
   const complete = await completeAuthenticatedUser(user, { allowMarketingConsent: consent });
   if (!complete.ok) return signInRedirect(request, "profile-setup-failed");
-  // First-time users choose club email preferences after verified sign-in.
-  // This is separate from authentication and is never a prerequisite to purchase.
-  if (complete.created && destination !== "/reset-password") {
-    const onboarding = NextResponse.redirect(new URL("/onboarding/consent", request.url), 303);
-    response.cookies.getAll().forEach((cookie) => onboarding.cookies.set(cookie));
-    return onboarding;
-  }
   return response;
 }
